@@ -1,0 +1,19 @@
+.dialog-window__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.dialog-window__message {
+    margin: 0;
+    color: var(--text-soft);
+    font-size: 0.9rem;
+    line-height: 1.65;
+    white-space: pre-wrap;
+}
+
+.dialog-window__spacer {
+    display: block;
+    min-height: 1px;
+}
