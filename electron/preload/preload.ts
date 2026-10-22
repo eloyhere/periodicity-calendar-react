@@ -28,11 +28,17 @@ import type {
     DialogApi,
     DialogOptions,
     DialogResult,
+    NotificationPlatformInfo,
     SnackbarApi,
     SnackbarCloseReason,
     SnackbarOptions,
     SnackbarResult,
     SnackbarState,
+    SystemNotificationApi,
+    SystemNotificationEvent,
+    SystemNotificationHistoryItem,
+    SystemNotificationOptions,
+    SystemNotificationResult,
     ToastApi,
     ToastDismissReason,
     ToastItem,
@@ -236,3 +242,38 @@ const daemon: DaemonApi = {
 };
 
 contextBridge.exposeInMainWorld("daemon", daemon);
+
+const notification: SystemNotificationApi = {
+    show(options: SystemNotificationOptions): Promise<SystemNotificationResult> {
+        return ipcRenderer.invoke("notification:show", options) as Promise<SystemNotificationResult>;
+    },
+    close(id: string): void {
+        ipcRenderer.send("notification:close", id);
+    },
+    isSupported(): Promise<boolean> {
+        return ipcRenderer.invoke("notification:is-supported") as Promise<boolean>;
+    },
+    platformInfo(): Promise<NotificationPlatformInfo> {
+        return ipcRenderer.invoke("notification:platform-info") as Promise<NotificationPlatformInfo>;
+    },
+    openSettings(): Promise<void> {
+        return ipcRenderer.invoke("notification:open-settings") as Promise<void>;
+    },
+    onEvent(callback: (event: SystemNotificationEvent) => void): () => void {
+        return subscribe<SystemNotificationEvent>("notification:event", callback);
+    },
+    openCenter(): void {
+        ipcRenderer.send("notification:open-center");
+    },
+    centerReady(): void {
+        ipcRenderer.send("notification:center-ready");
+    },
+    onHistory(callback: (items: SystemNotificationHistoryItem[]) => void): () => void {
+        return subscribe<SystemNotificationHistoryItem[]>("notification:history", callback);
+    },
+    clearHistory(): void {
+        ipcRenderer.send("notification:clear-history");
+    },
+};
+
+contextBridge.exposeInMainWorld("notification", notification);

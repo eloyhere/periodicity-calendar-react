@@ -40,4 +40,5 @@ interface Window {
     toast: import("../service/types").ToastApi;
     dialog: import("../service/types").DialogApi;
     daemon: import("../service/types").DaemonApi;
+    notification: import("../service/types").SystemNotificationApi;
 }

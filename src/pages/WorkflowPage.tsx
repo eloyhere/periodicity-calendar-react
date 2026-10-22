@@ -15,7 +15,7 @@ import type {
     WorkspaceInfo,
 } from "../../electron/llm/types";
 import LlmSettingsDialog from "../components/LlmSettingsDialog";
-import { showToast } from "../notifications";
+import { showSystemNotification, showToast } from "../notifications";
 import "./WorkflowPage.css";
 
 interface AgentMessage {
@@ -190,6 +190,15 @@ function WorkflowPage() {
                     tone: "success",
                 });
             }
+            void showSystemNotification({
+                title: result.ok ? "工作流完成" : "工作流失败",
+                body: result.ok
+                    ? result.usage
+                        ? `${String(result.usage.total_tokens)} tokens`
+                        : "任务已收敛"
+                    : result.error ?? "执行失败",
+                whenUnfocused: true,
+            });
             if (result.usage) {
                 setUsage(`${String(result.usage.prompt_tokens)} prompt · ${String(result.usage.completion_tokens)} completion · ${String(result.usage.total_tokens)} total`);
             }

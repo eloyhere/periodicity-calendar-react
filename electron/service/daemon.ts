@@ -92,7 +92,9 @@ function formatForClipboard(record: DaemonErrorRecord): string {
         record.message,
         record.source ? `source: ${record.source}` : "",
         record.stack ?? "",
-    ].filter((line: string): boolean => line.length > 0).join("\n");
+    ].filter((line: string): boolean => {
+        return line.length > 0;
+    }).join("\n");
 }
 
 /**

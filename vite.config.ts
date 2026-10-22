@@ -34,6 +34,7 @@ export default defineConfig({
                 dialog: path.join(__dirname, "windows/dialog.html"),
                 toast: path.join(__dirname, "windows/toast.html"),
                 daemon: path.join(__dirname, "windows/daemon.html"),
+                notification: path.join(__dirname, "windows/notification.html"),
             },
         },
     },

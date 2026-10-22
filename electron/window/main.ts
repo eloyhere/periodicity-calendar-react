@@ -16,6 +16,7 @@ import { runAgent } from "../agent/runtime";
 import { getWorkspaceInfo } from "../agent/tools";
 import { DaemonProcess } from "../service/daemon";
 import { DialogProcess } from "../service/dialog";
+import { NotificationProcess } from "../service/notification";
 import { SnackbarProcess } from "../service/snackbar";
 import { ToastProcess } from "../service/toast";
 import {
@@ -47,13 +48,35 @@ function reloadMainWindow(): void {
     createWindow();
 }
 
+/**
+ * Restores and focuses the main window, creating it when necessary.
+ */
+function focusMainWindow(): void {
+    if (!win || win.isDestroyed()) {
+        createWindow();
+        return;
+    }
+    if (win.isMinimized()) {
+        win.restore();
+    }
+    win.show();
+    win.focus();
+}
+
 const daemon: DaemonProcess = new DaemonProcess(reloadMainWindow);
+const notification: NotificationProcess = new NotificationProcess({
+    getMainWindow: (): BrowserWindow | null => {
+        return win;
+    },
+    focusMainWindow: focusMainWindow,
+});
 
 daemon.install();
 daemon.register();
 snackbar.register();
 toast.register();
 dialog.register();
+notification.register();
 
 ipcMain.on("window:minimize", (event) => {
     BrowserWindow.fromWebContents(event.sender)?.minimize();
@@ -158,6 +181,8 @@ function createWindow(): void {
             contextIsolation: true,
             nodeIntegration: false,
             sandbox: true,
+            defaultFontSize: 16,
+            minimumFontSize: 16,
         },
     });
 
@@ -181,6 +206,7 @@ function createWindow(): void {
         snackbar.detach();
         toast.detach();
         dialog.detach();
+        notification.destroy();
         win = null;
     });
 

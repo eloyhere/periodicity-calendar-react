@@ -1,5 +1,5 @@
-import { BrowserWindow, ipcMain } from "electron";
-import { createOverlayWindow, placeOverlay, trackParentWindow } from "../overlay/window";
+import { BrowserWindow, ipcMain, screen } from "electron";
+import { createOverlayWindow, placeWithin } from "../overlay/window";
 import type {
     DialogAction,
     DialogOptions,
@@ -12,6 +12,8 @@ const SIZES: readonly DialogSize[] = ["sm", "md", "lg"];
 const TONES: readonly DialogTone[] = ["neutral", "success", "warning", "danger"];
 const ACTIONS: readonly DialogAction[] = ["confirm", "cancel", "dismiss"];
 const READY_TIMEOUT_MS: number = 15000;
+const WINDOW_WIDTH: number = 680;
+const WINDOW_HEIGHT: number = 520;
 
 interface ActiveDialog {
     request: DialogOptions;
@@ -106,7 +108,6 @@ export class DialogProcess {
     private win: BrowserWindow | null = null;
     private active: ActiveDialog | null = null;
     private generation: number = 0;
-    private detachTracking: (() => void) | null = null;
     private parentCloseHandler: (() => void) | null = null;
 
     /**
@@ -269,6 +270,7 @@ export class DialogProcess {
         this.win.webContents.send("dialog:request", this.active.request);
         this.win.show();
         this.win.focus();
+        this.win.moveTop();
     }
 
     /**
@@ -281,22 +283,18 @@ export class DialogProcess {
         if (!this.parent || this.parent.isDestroyed()) {
             return;
         }
-        const bounds: Electron.Rectangle = this.parent.getContentBounds();
         const win: BrowserWindow = createOverlayWindow({
             page: "dialog",
-            width: bounds.width,
-            height: bounds.height,
-            parent: this.parent,
+            width: WINDOW_WIDTH,
+            height: WINDOW_HEIGHT,
             title: "Dialog",
             focusable: true,
-            modal: true,
             transparent: true,
+            alwaysOnTop: true,
         });
         this.win = win;
         this.position();
-        this.detachTracking = trackParentWindow(win, this.parent, () => {
-            this.position();
-        });
+        win.setAlwaysOnTop(true, "screen-saver");
         win.on("closed", () => {
             if (this.win !== win) {
                 return;
@@ -326,21 +324,22 @@ export class DialogProcess {
     }
 
     /**
-     * Fits the transparent dialog window over the parent's content area.
+     * Centers the independent dialog window on the main window's display.
      */
     private position(): void {
         if (!this.win || !this.parent || this.win.isDestroyed() || this.parent.isDestroyed()) {
             return;
         }
-        placeOverlay(this.win, this.parent, {
-            anchor: "fill",
-            width: 0,
-            height: 0,
+        const display: Electron.Display = screen.getDisplayMatching(this.parent.getBounds());
+        placeWithin(this.win, display.workArea, {
+            anchor: "center",
+            width: WINDOW_WIDTH,
+            height: WINDOW_HEIGHT,
         });
     }
 
     /**
-     * Destroys the dialog window and releases parent tracking.
+     * Destroys the dialog window.
      */
     private destroyWindow(): void {
         if (this.win && !this.win.isDestroyed()) {
@@ -353,10 +352,6 @@ export class DialogProcess {
      * Clears window bookkeeping after the window is gone.
      */
     private cleanupWindow(): void {
-        if (this.detachTracking) {
-            this.detachTracking();
-            this.detachTracking = null;
-        }
         this.win = null;
     }
 }

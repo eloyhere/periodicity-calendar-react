@@ -3,7 +3,7 @@ import { PeriodicityButton, PeriodicityChat, PeriodicitySkeleton } from "periodi
 import type { LlmChatMessage, LlmChatResult, LlmPublicSettings } from "../../electron/llm/types";
 import type { DialogResult, SnackbarResult } from "../../electron/service/types";
 import LlmSettingsDialog from "../components/LlmSettingsDialog";
-import { openDialog, showSnackbar, showToast } from "../notifications";
+import { openDialog, showSnackbar, showSystemNotification, showToast } from "../notifications";
 import "./ChatPage.css";
 
 type ChatPresence = "online" | "away" | "busy" | "offline";
@@ -136,6 +136,11 @@ function ChatPage() {
                 };
                 setMessages((current) => {
                     return [...current, assistantMessage];
+                });
+                void showSystemNotification({
+                    title: "模型回复完成",
+                    body: result.content.length > 0 ? result.content.slice(0, 160) : "模型已返回结果",
+                    whenUnfocused: true,
                 });
             } catch (sendError: unknown) {
                 notifyError(sendError instanceof Error ? sendError.message : "模型请求失败");

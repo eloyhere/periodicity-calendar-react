@@ -3,6 +3,8 @@ import type {
     DialogResult,
     SnackbarOptions,
     SnackbarResult,
+    SystemNotificationOptions,
+    SystemNotificationResult,
     ToastOptions,
 } from "../electron/service/types";
 
@@ -40,4 +42,17 @@ export function showToast(options: ToastOptions): void {
     void window.toast.show(options).catch(() => {
         // The toast window is optional; shutdown can remove it mid-request.
     });
+}
+
+/**
+ * Sends a native desktop notification through the Notification process.
+ * @param options Title, body, presentation flags, and focus policy.
+ * @return Native result, or null when the notification process is unavailable.
+ */
+export async function showSystemNotification(options: SystemNotificationOptions): Promise<SystemNotificationResult | null> {
+    try {
+        return await window.notification.show(options);
+    } catch {
+        return null;
+    }
 }

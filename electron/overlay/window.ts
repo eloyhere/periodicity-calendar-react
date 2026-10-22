@@ -5,10 +5,8 @@ export interface OverlayWindowOptions {
     page: string;
     width: number;
     height: number;
-    parent?: BrowserWindow | null;
     title?: string;
     focusable?: boolean;
-    modal?: boolean;
     resizable?: boolean;
     movable?: boolean;
     transparent?: boolean;
@@ -28,14 +26,11 @@ export interface OverlayWindowOptions {
  * @return The hidden window, already loading its renderer entry.
  */
 export function createOverlayWindow(options: OverlayWindowOptions): BrowserWindow {
-    const parent: BrowserWindow | null = options.parent ?? null;
     const win: BrowserWindow = new BrowserWindow({
         width: options.width,
         height: options.height,
         minWidth: options.minWidth,
         minHeight: options.minHeight,
-        parent: parent ?? (void 0),
-        modal: (options.modal ?? false) && parent !== null,
         frame: false,
         transparent: options.transparent ?? true,
         backgroundColor: options.backgroundColor ?? "#00000000",
@@ -74,7 +69,7 @@ export function createOverlayWindow(options: OverlayWindowOptions): BrowserWindo
     return win;
 }
 
-export type OverlayAnchor = "bottom-left" | "bottom-center" | "bottom-right" | "top-right" | "fill";
+export type OverlayAnchor = "bottom-left" | "bottom-center" | "bottom-right" | "top-right" | "center" | "fill";
 
 export interface OverlayPlacement {
     anchor: OverlayAnchor;
@@ -83,70 +78,38 @@ export interface OverlayPlacement {
 }
 
 /**
- * Places an overlay window relative to its parent's content bounds.
+ * Places an overlay window inside one screen or content rectangle.
  * @param win Overlay window to move.
- * @param parent Main window that owns the overlay.
+ * @param area Screen work area or parent content bounds.
  * @param placement Anchor, width, and height of the overlay surface.
  */
-export function placeOverlay(win: BrowserWindow, parent: BrowserWindow, placement: OverlayPlacement): void {
-    if (win.isDestroyed() || parent.isDestroyed()) {
+export function placeWithin(win: BrowserWindow, area: Electron.Rectangle, placement: OverlayPlacement): void {
+    if (win.isDestroyed()) {
         return;
     }
-    const bounds: Electron.Rectangle = parent.getContentBounds();
     if (placement.anchor === "fill") {
-        win.setBounds(bounds);
+        win.setBounds(area);
         return;
     }
-    const width: number = Math.max(1, Math.min(placement.width, bounds.width));
-    const height: number = Math.max(1, Math.min(placement.height, bounds.height));
-    let x: number = bounds.x;
-    let y: number = bounds.y;
+    const width: number = Math.max(1, Math.min(placement.width, area.width));
+    const height: number = Math.max(1, Math.min(placement.height, area.height));
+    let x: number = area.x;
+    let y: number = area.y;
     if (placement.anchor === "bottom-center") {
-        x = bounds.x + Math.round((bounds.width - width) / 2);
-        y = bounds.y + bounds.height - height;
+        x = area.x + Math.round((area.width - width) / 2);
+        y = area.y + area.height - height;
     } else if (placement.anchor === "bottom-left") {
-        x = bounds.x;
-        y = bounds.y + bounds.height - height;
+        x = area.x;
+        y = area.y + area.height - height;
     } else if (placement.anchor === "bottom-right") {
-        x = bounds.x + bounds.width - width;
-        y = bounds.y + bounds.height - height;
+        x = area.x + area.width - width;
+        y = area.y + area.height - height;
+    } else if (placement.anchor === "center") {
+        x = area.x + Math.round((area.width - width) / 2);
+        y = area.y + Math.round((area.height - height) / 2);
     } else {
-        x = bounds.x + bounds.width - width;
-        y = bounds.y;
+        x = area.x + area.width - width;
+        y = area.y;
     }
     win.setBounds({ x, y, width, height });
-}
-
-/**
- * Keeps an overlay aligned while its parent moves, resizes, or enters full screen.
- * @param win Overlay window that follows the parent.
- * @param parent Main window that owns the overlay.
- * @param onChange Callback that re-applies the overlay bounds.
- * @return Cleanup function that removes all parent listeners.
- */
-export function trackParentWindow(win: BrowserWindow, parent: BrowserWindow, onChange: () => void): () => void {
-    const handler: () => void = () => {
-        if (!win.isDestroyed()) {
-            onChange();
-        }
-    };
-    parent.on("resize", handler);
-    parent.on("move", handler);
-    parent.on("maximize", handler);
-    parent.on("unmaximize", handler);
-    parent.on("enter-full-screen", handler);
-    parent.on("leave-full-screen", handler);
-    parent.on("restore", handler);
-    return (): void => {
-        if (parent.isDestroyed()) {
-            return;
-        }
-        parent.removeListener("resize", handler);
-        parent.removeListener("move", handler);
-        parent.removeListener("maximize", handler);
-        parent.removeListener("unmaximize", handler);
-        parent.removeListener("enter-full-screen", handler);
-        parent.removeListener("leave-full-screen", handler);
-        parent.removeListener("restore", handler);
-    };
 }

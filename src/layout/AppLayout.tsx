@@ -1,8 +1,10 @@
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
     PeriodicityCollapse,
     PeriodicityCoordinator,
     PeriodicityDrawerLayout,
+    PeriodicityIcon,
     PeriodicityNavigationView,
     PeriodicityToolbar,
 } from "periodicity-react";
@@ -24,6 +26,10 @@ const PAGE_META: Record<string, PageMeta> = {
     "/workflow": {
         title: "工作流",
         subtitle: "在工作目录里读文件、改代码、跑 PowerShell、查 git；允许试错，也允许验证。",
+    },
+    "/call-test": {
+        title: "CallTest",
+        subtitle: "测试系统通知与 Snackbar / Toast / Dialog 进程的发送、关闭与事件。",
     },
     "/gregorian": {
         title: "格里高利历",
@@ -47,12 +53,53 @@ function AppLayout() {
     const location: ReturnType<typeof useLocation> = useLocation();
     const navigate: ReturnType<typeof useNavigate> = useNavigate();
     const activePath: string = location.pathname;
+    const [leftOpen, setLeftOpen]: [boolean, Dispatch<SetStateAction<boolean>>] = useState<boolean>(true);
+    const menuPointerHandled: { current: boolean } = useRef<boolean>(false);
     const activeItem: AppNavigationItem | undefined = appNavigationItems.find((item: AppNavigationItem): boolean => {
         return item.value === activePath;
     });
     const meta: PageMeta = PAGE_META[activePath] ?? {
         title: activeItem?.label ?? "工作台",
         subtitle: "Periodicity Calendar",
+    };
+
+    useEffect(() => {
+        const handleMenuPointerDown: (event: PointerEvent) => void = (event: PointerEvent): void => {
+            const target: EventTarget | null = event.target;
+            if (!(target instanceof Element)) {
+                return;
+            }
+            if (target.closest(".app-toolbar .toolbar__navigation") === null) {
+                return;
+            }
+            // DrawerLayout listens on document capture and closes the drawer for
+            // pointerdown targets outside its root. The toolbar lives outside
+            // that root, so this handler occupies the earlier window-capture
+            // phase and prevents the drawer from swallowing the menu click.
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            menuPointerHandled.current = true;
+            setLeftOpen((current: boolean): boolean => {
+                return !current;
+            });
+            window.setTimeout(() => {
+                menuPointerHandled.current = false;
+            }, 400);
+        };
+        window.addEventListener("pointerdown", handleMenuPointerDown, true);
+        return (): void => {
+            window.removeEventListener("pointerdown", handleMenuPointerDown, true);
+        };
+    }, []);
+
+    const handleNavigationClick: () => void = () => {
+        if (menuPointerHandled.current) {
+            menuPointerHandled.current = false;
+            return;
+        }
+        setLeftOpen((current: boolean): boolean => {
+            return !current;
+        });
     };
 
     return (
@@ -82,6 +129,9 @@ function AppLayout() {
             header={
                 <PeriodicityToolbar
                     className="app-toolbar"
+                    navigationIcon={<PeriodicityIcon name="Menu" size={20} />}
+                    navigationLabel={leftOpen ? "关闭菜单" : "打开菜单"}
+                    onNavigationClick={handleNavigationClick}
                     title="Periodicity Calendar"
                     subtitle={meta.title}
                     actions={<WindowControls />}
@@ -98,7 +148,8 @@ function AppLayout() {
                 <PeriodicityDrawerLayout
                     className="app-body"
                     leftWidth={240}
-                    defaultLeftOpen
+                    leftOpen={leftOpen}
+                    onLeftOpenChange={setLeftOpen}
                     leftLabel="主菜单"
                     centreLabel="主内容"
                     left={

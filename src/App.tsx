@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import AppLayout from "./layout/AppLayout";
+import CallTestPage from "./pages/CallTestPage";
 import ChatPage from "./pages/ChatPage";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import WorkflowPage from "./pages/WorkflowPage";
@@ -21,6 +22,8 @@ function App() {
                                     <ChatPage />
                                 ) : item.value === "/workflow" ? (
                                     <WorkflowPage />
+                                ) : item.value === "/call-test" ? (
+                                    <CallTestPage />
                                 ) : (
                                     <PlaceholderPage title={item.label} />
                                 )

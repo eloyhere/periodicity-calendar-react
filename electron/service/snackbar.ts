@@ -1,9 +1,8 @@
-import { BrowserWindow, ipcMain } from "electron";
+import { BrowserWindow, ipcMain, screen } from "electron";
 import { randomUUID } from "node:crypto";
 import {
     createOverlayWindow,
-    placeOverlay,
-    trackParentWindow,
+    placeWithin,
     type OverlayAnchor,
 } from "../overlay/window";
 import type {
@@ -109,7 +108,6 @@ export class SnackbarProcess {
     private pending: PendingSnackbar | null = null;
     private state: SnackbarState | null = null;
     private contentHeight: number = 48;
-    private detachTracking: (() => void) | null = null;
     private parentCloseHandler: (() => void) | null = null;
 
     /**
@@ -329,17 +327,14 @@ export class SnackbarProcess {
             page: "snackbar",
             width: SURFACE_WIDTH,
             height: SURFACE_MIN_HEIGHT,
-            parent: this.parent,
             title: "Snackbar",
             focusable: false,
             transparent: true,
+            alwaysOnTop: true,
         });
         this.win = win;
         this.ready = false;
         this.contentHeight = 48;
-        this.detachTracking = trackParentWindow(win, this.parent, () => {
-            this.position();
-        });
         win.on("closed", () => {
             if (this.win !== win) {
                 return;
@@ -384,7 +379,8 @@ export class SnackbarProcess {
             SURFACE_MIN_HEIGHT,
             Math.min(SURFACE_MAX_HEIGHT + VERTICAL_CHROME, this.contentHeight + VERTICAL_CHROME),
         );
-        placeOverlay(this.win, this.parent, {
+        const display: Electron.Display = screen.getDisplayMatching(this.parent.getBounds());
+        placeWithin(this.win, display.workArea, {
             anchor: placementAnchor(this.state?.anchor ?? "bottom-center"),
             width: SURFACE_WIDTH,
             height,
@@ -416,7 +412,7 @@ export class SnackbarProcess {
     }
 
     /**
-     * Destroys the snackbar window and releases parent tracking.
+     * Destroys the snackbar window.
      */
     private destroyWindow(): void {
         if (this.win && !this.win.isDestroyed()) {
@@ -429,10 +425,6 @@ export class SnackbarProcess {
      * Clears window bookkeeping after the window is gone.
      */
     private cleanupWindow(): void {
-        if (this.detachTracking) {
-            this.detachTracking();
-            this.detachTracking = null;
-        }
         this.win = null;
         this.ready = false;
     }

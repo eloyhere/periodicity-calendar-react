@@ -166,3 +166,65 @@ export interface DaemonApi {
     ready: () => void;
     action: (action: DaemonAction, errorId?: string) => Promise<void>;
 }
+
+export type SystemNotificationUrgency = "normal" | "critical" | "low";
+
+export type SystemNotificationTimeout = "default" | "never";
+
+export type SystemNotificationEventType = "show" | "click" | "close" | "failed" | "action";
+
+export interface SystemNotificationOptions {
+    title: string;
+    body?: string;
+    subtitle?: string;
+    silent?: boolean;
+    urgency?: SystemNotificationUrgency;
+    timeoutType?: SystemNotificationTimeout;
+    whenUnfocused?: boolean;
+    sound?: string;
+}
+
+export type NotificationPlatformId = "windows10" | "windows11" | "macos" | "generic";
+
+export interface NotificationPlatformInfo {
+    id: NotificationPlatformId;
+    label: string;
+    version: string;
+    supported: boolean;
+    requiresCodeSigning: boolean;
+    requiresShortcut: boolean;
+    notes: string[];
+}
+
+export interface SystemNotificationResult {
+    id: string;
+    supported: boolean;
+    shown: boolean;
+    reason?: string;
+}
+
+export interface SystemNotificationEvent {
+    id: string;
+    type: SystemNotificationEventType;
+    actionIndex?: number;
+    error?: string;
+}
+
+export interface SystemNotificationHistoryItem extends SystemNotificationResult {
+    title: string;
+    body?: string;
+    at: string;
+}
+
+export interface SystemNotificationApi {
+    show: (options: SystemNotificationOptions) => Promise<SystemNotificationResult>;
+    close: (id: string) => void;
+    isSupported: () => Promise<boolean>;
+    platformInfo: () => Promise<NotificationPlatformInfo>;
+    openSettings: () => Promise<void>;
+    onEvent: (callback: (event: SystemNotificationEvent) => void) => () => void;
+    openCenter: () => void;
+    centerReady: () => void;
+    onHistory: (callback: (items: SystemNotificationHistoryItem[]) => void) => () => void;
+    clearHistory: () => void;
+}
