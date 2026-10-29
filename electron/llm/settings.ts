@@ -4,10 +4,14 @@ import path from "node:path";
 import type { LlmPublicSettings, LlmSaveSettings, LlmSettings } from "./types";
 
 const SETTINGS_FILE_NAME: string = "llm-settings.json";
-const DEFAULT_BASE_URL: string = "https://api.deepseek.com/v1";
-const DEFAULT_MODEL: string = "deepseek-chat";
+const DEFAULT_BASE_URL: string = "https://api.deepseek.com";
+const DEFAULT_MODEL: string = "deepseek-flash";
 
-function settingsPath(): string {
+/**
+ * Resolves the JSON file that stores the model and workspace settings.
+ * @return Absolute path inside the Electron userData directory.
+ */
+export function settingsPath(): string {
     return path.join(app.getPath("userData"), SETTINGS_FILE_NAME);
 }
 
@@ -57,6 +61,28 @@ function defaultSettings(): LlmSettings {
     };
 }
 
+/**
+ * Reads the stored key while preserving an intentionally cleared value.
+ * @param parsed Settings parsed from disk.
+ * @param fallback Environment-derived defaults.
+ * @return The stored key, or the environment key when the file never stored one.
+ */
+function resolveApiKey(parsed: Partial<LlmSettings>, fallback: LlmSettings): string {
+    if (typeof parsed.apiKey === "string") {
+        return parsed.apiKey.trim();
+    }
+    return fallback.apiKey;
+}
+
+/**
+ * Writes the full settings snapshot to disk, creating the directory when needed.
+ * @param settings Settings to serialize as JSON.
+ */
+function persistSettings(settings: LlmSettings): void {
+    fs.mkdirSync(path.dirname(settingsPath()), { recursive: true });
+    fs.writeFileSync(settingsPath(), `${JSON.stringify(settings, null, 2)}\n`, "utf8");
+}
+
 export function loadSettings(): LlmSettings {
     const fallback: LlmSettings = defaultSettings();
     try {
@@ -65,7 +91,7 @@ export function loadSettings(): LlmSettings {
         return {
             baseUrl: normalizeBaseUrl(parsed.baseUrl ?? fallback.baseUrl),
             model: (parsed.model ?? fallback.model).trim() || fallback.model,
-            apiKey: (parsed.apiKey ?? "").trim() || fallback.apiKey,
+            apiKey: resolveApiKey(parsed, fallback),
             workspaceRoot: normalizeWorkspace(parsed.workspaceRoot ?? fallback.workspaceRoot),
         };
     } catch {
@@ -91,7 +117,17 @@ export function saveSettings(input: LlmSaveSettings): LlmPublicSettings {
         apiKey: input.apiKey.trim().length > 0 ? input.apiKey.trim() : existing.apiKey,
         workspaceRoot: normalizeWorkspace(input.workspaceRoot || existing.workspaceRoot),
     };
-    fs.mkdirSync(path.dirname(settingsPath()), { recursive: true });
-    fs.writeFileSync(settingsPath(), `${JSON.stringify(next, null, 2)}\n`, "utf8");
+    persistSettings(next);
+    return publicSettings(next);
+}
+
+/**
+ * Removes the API key stored on this machine while keeping the other settings.
+ * @return Public settings snapshot with `hasKey` set to false.
+ */
+export function clearApiKey(): LlmPublicSettings {
+    const existing: LlmSettings = loadSettings();
+    const next: LlmSettings = { ...existing, apiKey: "" };
+    persistSettings(next);
     return publicSettings(next);
 }

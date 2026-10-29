@@ -1,5 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
-import { PeriodicityButton } from "periodicity-react";
+import { PeriodicityAlert, PeriodicityButton, PeriodicityCard } from "periodicity-react";
 
 interface AppErrorBoundaryProps {
     children: ReactNode;
@@ -53,18 +53,18 @@ class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorBoundary
         }
         return (
             <div className="app-crash" role="alert">
-                <span className="app-crash__eyebrow">RENDER ERROR</span>
-                <h1>界面出现异常</h1>
-                <p>守护进程已经记录错误详情。重新加载界面即可恢复，当前数据仍保留在本地。</p>
-                <pre className="app-crash__message">{this.state.error.message}</pre>
-                <PeriodicityButton
-                    icon="Refresh"
-                    onClick={() => {
-                        window.location.reload();
-                    }}
-                >
-                    重新加载界面
-                </PeriodicityButton>
+                <PeriodicityCard title="界面出现异常" eyebrow="RENDER ERROR">
+                    <p className="app-crash__description">守护进程已经记录错误详情。重新加载界面即可恢复，当前数据仍保留在本地。</p>
+                    <PeriodicityAlert tone="danger" title="渲染失败" description={this.state.error.message} />
+                    <PeriodicityButton
+                        icon="Refresh"
+                        onClick={() => {
+                            window.location.reload();
+                        }}
+                    >
+                        重新加载界面
+                    </PeriodicityButton>
+                </PeriodicityCard>
             </div>
         );
     }

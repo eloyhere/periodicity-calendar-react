@@ -1,0 +1,31 @@
+/*
+ * Pointer ripples are essential press feedback, but the design system scales their
+ * duration with `--motion-scale`, which drops to 0 as soon as the page reports
+ * `prefers-reduced-motion: reduce`. Electron reports that whenever Windows has
+ * Settings -> Accessibility -> Visual effects -> "Animation effects" switched off,
+ * so every ripple is painted with a 0s animation and stays invisible even though it
+ * still spawns: hover and click lose their feedback.
+ *
+ * Scaling with `--motion-essential-scale` keeps the feedback the design system
+ * reserves for essential motion: a full 1s ripple normally and a shortened 0.5s one
+ * under reduced motion, the same treatment spinners and rings receive.
+ * `--motion-scale` is redeclared on the ripple itself so the value inherited from
+ * `:root` cannot zero the animation again, and `:root[data-motion="always"]` still
+ * restores the full duration for anyone who opts out of reduced motion.
+ */
+.ripple {
+    --motion-scale: var(--motion-essential-scale, 1);
+}
+
+/*
+ * The design system reacts to the operating system through the
+ * `prefers-reduced-motion` media query only, so the in-app "reduce" choice mirrors
+ * that block with document-scoped tokens. Durations are token driven, so zeroing the
+ * scale stops transitions and freezes decorative loops, while essential motion keeps
+ * running at half speed.
+ */
+:root[data-motion="reduce"] {
+    --motion-scale: 0;
+    --motion-essential-scale: 0.5;
+    --motion-repeat: 1;
+}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type RefObject, type SetStateAction } from "react";
-import { PeriodicityButton, PeriodicityIcon } from "periodicity-react";
+import { PeriodicityAlert, PeriodicityButton } from "periodicity-react";
 import type { PeriodicityIconName } from "periodicity-react";
 import type {
     ToastDismissReason,
@@ -76,44 +76,27 @@ function ToastWindow() {
         <div className="overlay-toast-region" role="region" aria-label="通知">
             {items.map((item: ToastItem) => {
                 return (
-                    <article
-                        className={`overlay-toast overlay-toast--${item.tone}`}
+                    <PeriodicityAlert
                         key={item.id}
                         role="status"
-                        aria-live="polite"
-                        aria-atomic="true"
-                    >
-                        <span className="overlay-toast__stripe" aria-hidden="true" />
-                        <span className="overlay-toast__icon" aria-hidden="true">
-                            <PeriodicityIcon name={TONE_ICONS[item.tone]} size={16} />
-                        </span>
-                        <div className="overlay-toast__content">
-                            <strong className="overlay-toast__title">{item.title}</strong>
-                            {item.description && <span className="overlay-toast__description">{item.description}</span>}
-                        </div>
-                        <div className="overlay-toast__actions">
-                            {item.actionLabel && (
-                                <PeriodicityButton
-                                    variant="quiet"
-                                    size="sm"
-                                    onClick={() => {
-                                        dismiss(item.id, "action");
-                                    }}
-                                >
-                                    {item.actionLabel}
-                                </PeriodicityButton>
-                            )}
+                        tone={item.tone}
+                        icon={TONE_ICONS[item.tone]}
+                        title={item.title}
+                        description={item.description}
+                        dismissible
+                        onDismiss={() => { dismiss(item.id, "dismiss"); }}
+                        action={item.actionLabel && (
                             <PeriodicityButton
                                 variant="quiet"
                                 size="sm"
-                                icon="Close"
-                                aria-label="关闭通知"
                                 onClick={() => {
-                                    dismiss(item.id, "dismiss");
+                                    dismiss(item.id, "action");
                                 }}
-                            />
-                        </div>
-                    </article>
+                            >
+                                {item.actionLabel}
+                            </PeriodicityButton>
+                        )}
+                    />
                 );
             })}
         </div>

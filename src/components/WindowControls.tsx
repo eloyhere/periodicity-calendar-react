@@ -14,7 +14,6 @@ function WindowControls() {
     return (
         <div className="window-controls">
             <PeriodicityButton
-                className="window-control"
                 variant="quiet"
                 size="sm"
                 icon="Subtract"
@@ -25,7 +24,6 @@ function WindowControls() {
                 }}
             />
             <PeriodicityButton
-                className="window-control window-control--maximize"
                 variant="quiet"
                 size="sm"
                 aria-label={isMaximized ? "Restore" : "Maximize"}
@@ -52,7 +50,6 @@ function WindowControls() {
                 </svg>
             </PeriodicityButton>
             <PeriodicityButton
-                className="window-control window-control--close"
                 variant="quiet"
                 size="sm"
                 icon="Close"

@@ -2,7 +2,10 @@ import { StrictMode, type ReactNode } from "react";
 import ReactDOM from "react-dom/client";
 import { PeriodicityInternational, PeriodicityTheme } from "periodicity-react";
 import "periodicity-react/styles.css";
+import "../../motion.css";
 import "./window.css";
+import type { AppPreferences } from "../../../electron/settings/types";
+import { applyMotionPreference, readPreferences, resolveThemeMode } from "../../preferences/preferences";
 
 export interface OverlayRenderOptions {
     mode?: "light" | "dark";
@@ -21,7 +24,7 @@ function applyDocumentTheme(mode: "light" | "dark", windowClass: string): void {
         root.classList.add(windowClass);
     }
     root.dataset.theme = mode;
-    root.dataset.density = "compact";
+    root.dataset.density = "regular";
     root.dataset.radius = "default";
     root.style.setProperty("color-scheme", mode);
 }
@@ -45,9 +48,35 @@ function installOverlayErrorReporting(source: string): void {
             kind: "renderer-error",
             message: reason instanceof Error ? reason.message : String(reason),
             stack: reason instanceof Error ? reason.stack : (void 0),
-            source,
+            source: "renderer:promise",
         });
     });
+}
+
+/**
+ * Applies the stored theme and motion preferences, then renders one overlay window entry.
+ * @param container Mount node of the overlay window.
+ * @param element Window-specific React tree.
+ * @param options Colour mode override and optional document class.
+ * @param windowClass Resolved document class.
+ */
+async function mountOverlay(
+    container: HTMLElement,
+    element: ReactNode,
+    options: OverlayRenderOptions,
+    windowClass: string,
+): Promise<void> {
+    const preferences: AppPreferences = await readPreferences();
+    const mode: "light" | "dark" = options.mode ?? resolveThemeMode(preferences.mode);
+    applyDocumentTheme(mode, windowClass);
+    applyMotionPreference(preferences.motion);
+    ReactDOM.createRoot(container).render(
+        <StrictMode>
+            <PeriodicityTheme className="overlay-theme" theme="default" mode={mode}>
+                <PeriodicityInternational locale="zh-CN">{element}</PeriodicityInternational>
+            </PeriodicityTheme>
+        </StrictMode>,
+    );
 }
 
 /**
@@ -56,9 +85,7 @@ function installOverlayErrorReporting(source: string): void {
  * @param options Colour mode and optional document class.
  */
 export function renderOverlay(element: ReactNode, options: OverlayRenderOptions = {}): void {
-    const mode: "light" | "dark" = options.mode ?? "light";
     const windowClass: string = options.windowClass ?? "";
-    applyDocumentTheme(mode, windowClass);
     if (windowClass !== "daemon-window") {
         installOverlayErrorReporting(windowClass.length > 0 ? `overlay:${windowClass}` : "overlay");
     }
@@ -66,11 +93,5 @@ export function renderOverlay(element: ReactNode, options: OverlayRenderOptions 
     if (!container) {
         throw new Error("Overlay root element is missing.");
     }
-    ReactDOM.createRoot(container).render(
-        <StrictMode>
-            <PeriodicityTheme className="overlay-theme" theme="default" mode={mode} density="compact">
-                <PeriodicityInternational locale="zh-CN">{element}</PeriodicityInternational>
-            </PeriodicityTheme>
-        </StrictMode>,
-    );
+    void mountOverlay(container, element, options, windowClass);
 }

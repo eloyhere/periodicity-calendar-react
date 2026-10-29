@@ -6,7 +6,18 @@ const here: string = path.dirname(fileURLToPath(import.meta.url));
 
 process.env.APP_ROOT = path.join(here, "..");
 
-export const VITE_DEV_SERVER_URL: string | undefined = process.env["VITE_DEV_SERVER_URL"];
+const configuredDevServerUrl: string | undefined = process.env["VITE_DEV_SERVER_URL"];
+let devServerUrl: string | undefined = configuredDevServerUrl;
+if (devServerUrl) {
+    const parsedDevServerUrl: URL = new URL(devServerUrl);
+    // vite-plugin-electron rewrites loopback hosts to localhost. Match Vite's
+    // explicit IPv4 listener so Chromium cannot resolve localhost to IPv6.
+    if (parsedDevServerUrl.hostname === "localhost") {
+        parsedDevServerUrl.hostname = "127.0.0.1";
+    }
+    devServerUrl = parsedDevServerUrl.toString();
+}
+export const VITE_DEV_SERVER_URL: string | undefined = devServerUrl;
 export const MAIN_DIST: string = path.join(process.env.APP_ROOT, "dist-electron");
 export const RENDERER_DIST: string = path.join(process.env.APP_ROOT, "dist");
 export const PRELOAD_PATH: string = path.join(MAIN_DIST, "preload.mjs");

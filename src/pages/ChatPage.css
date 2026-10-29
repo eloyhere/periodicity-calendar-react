@@ -1,82 +1,29 @@
 .chat-page {
     display: flex;
     flex-direction: column;
-    height: 100%;
-    padding: 16px;
     box-sizing: border-box;
+    height: 100%;
+    min-height: 0;
     gap: 10px;
-    background: transparent;
+    padding: 16px;
 }
 
 .chat-page__bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
     flex: none;
-    gap: 16px;
-    padding: 9px 12px;
-    border: 1px solid var(--line);
-    border-radius: var(--radius-md, 8px);
-    background: var(--color-surface);
-}
-
-.chat-page__identity {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 4px 12px;
-    min-width: 0;
-}
-
-.chat-page__identity strong {
-    font-size: 0.86rem;
-}
-
-.chat-page__identity span {
-    overflow: hidden;
-    color: var(--color-on-surface-variant);
-    font-family: var(--font-mono, monospace);
-    font-size: 0.68rem;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.chat-page__key {
-    color: var(--color-danger, #b3261e) !important;
-}
-
-.chat-page__key--ok {
-    color: var(--color-success, #146c43) !important;
 }
 
 .chat-page__bar-actions {
     display: flex;
-    flex: none;
     flex-wrap: wrap;
+    align-items: center;
     gap: 8px;
 }
 
-.chat-page__status {
-    flex: none;
-    margin: 0;
-    color: var(--color-on-surface-variant);
-    font-size: 0.72rem;
-}
-
-.chat-page__chat.chat {
-    flex: 1 1 auto;
-    height: auto;
+.chat-page__conversation {
+    display: grid;
+    flex: 1 1 0;
     min-height: 0;
-}
-
-/* The published Contact row nests its flex content inside Surface. */
-.chat-page__chat .contact__row > .surface__component {
-    display: flex;
-    align-items: center;
-    flex: auto;
-    gap: var(--space-3);
-    min-width: 0;
-    width: 100%;
+    overflow: auto;
 }
 
 .chat-loading {
@@ -89,10 +36,5 @@
 @media (max-width: 720px) {
     .chat-page {
         padding: 10px;
-    }
-
-    .chat-page__bar {
-        align-items: flex-start;
-        flex-direction: column;
     }
 }

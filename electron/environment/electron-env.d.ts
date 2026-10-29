@@ -41,4 +41,6 @@ interface Window {
     dialog: import("../service/types").DialogApi;
     daemon: import("../service/types").DaemonApi;
     notification: import("../service/types").SystemNotificationApi;
+    preferences: import("../settings/types").PreferencesApi;
+    appInfo: import("../settings/types").AppInfoApi;
 }

@@ -1,52 +1,44 @@
-import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from "react";
-import { PeriodicityButton, PeriodicityChat, PeriodicitySkeleton } from "periodicity-react";
+import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+    PeriodicityAgentChat,
+    PeriodicityButton,
+    PeriodicitySkeleton,
+    PeriodicityTag,
+    PeriodicityToolbar,
+} from "periodicity-react";
+import type { AgentChatProps, AgentMessageItem, AgentProfile, AgentSession } from "periodicity-react";
 import type { LlmChatMessage, LlmChatResult, LlmPublicSettings } from "../../electron/llm/types";
 import type { DialogResult, SnackbarResult } from "../../electron/service/types";
-import LlmSettingsDialog from "../components/LlmSettingsDialog";
-import { openDialog, showSnackbar, showSystemNotification, showToast } from "../notifications";
+import { openDialog, showSnackbar, showSystemNotification } from "../notifications";
 import "./ChatPage.css";
 
-type ChatPresence = "online" | "away" | "busy" | "offline";
-type ChatStatus = "sending" | "sent" | "read" | "failed";
-
-interface ChatContact {
-    id: string;
-    name: string;
-    description?: string;
-    presence?: ChatPresence;
-}
-
-interface ChatMessage {
-    id: string;
-    contactId: string;
-    author: string;
-    content: string;
-    timestamp?: string;
-    self?: boolean;
-    status?: ChatStatus;
-}
-
 const currentUser: string = "我";
-const modelContact: ChatContact = {
-    id: "model",
-    name: "大模型",
-    description: "当前配置的 OpenAI-compatible 模型",
-    presence: "online",
-};
-const initialMessages: readonly ChatMessage[] = [
+const modelAgentName: string = "大模型";
+const defaultSessionId: string = "model";
+const initialMessages: readonly AgentMessageItem[] = [
     {
         id: "welcome",
-        contactId: "model",
-        author: "大模型",
+        sessionId: defaultSessionId,
+        author: modelAgentName,
         content: "你好。我是当前配置的模型。你可以在设置里填写 Base URL、模型名和 API Key，然后直接开始聊天。",
         timestamp: "现在",
+        role: "agent",
     },
 ];
 
+function formatMessageTime(): string {
+    return new Date().toLocaleTimeString("zh-CN", {
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+}
+
 function ChatPage() {
-    const [messages, setMessages]: [ChatMessage[], Dispatch<SetStateAction<ChatMessage[]>>] = useState<ChatMessage[]>([...initialMessages]);
+    const navigate: ReturnType<typeof useNavigate> = useNavigate();
+    const [messages, setMessages]: [AgentMessageItem[], Dispatch<SetStateAction<AgentMessageItem[]>>] = useState<AgentMessageItem[]>([...initialMessages]);
+    const [activeSessionId, setActiveSessionId]: [string, Dispatch<SetStateAction<string>>] = useState<string>(defaultSessionId);
     const [settings, setSettings]: [LlmPublicSettings | null, Dispatch<SetStateAction<LlmPublicSettings | null>>] = useState<LlmPublicSettings | null>(null);
-    const [settingsOpen, setSettingsOpen]: [boolean, Dispatch<SetStateAction<boolean>>] = useState<boolean>(false);
     const [isReplying, setIsReplying]: [boolean, Dispatch<SetStateAction<boolean>>] = useState<boolean>(false);
     const [loading, setLoading]: [boolean, Dispatch<SetStateAction<boolean>>] = useState<boolean>(true);
 
@@ -58,10 +50,10 @@ function ChatPage() {
             duration: 9000,
         }).then((result) => {
             if (result?.reason === "action") {
-                setSettingsOpen(true);
+                navigate("/settings");
             }
         });
-    }, []);
+    }, [navigate]);
 
     useEffect(() => {
         let cancelled: boolean = false;
@@ -87,7 +79,33 @@ function ChatPage() {
         };
     }, [notifyError]);
 
-    const handleSend: (body: string, contact: ChatContact) => void = (body, contact) => {
+    const activeMessages: AgentMessageItem[] = useMemo(() => {
+        return messages.filter((message: AgentMessageItem): boolean => {
+            return message.sessionId === activeSessionId;
+        });
+    }, [activeSessionId, messages]);
+    const sessions: readonly AgentSession[] = useMemo(() => {
+        const lastMessage: AgentMessageItem | undefined = activeMessages[activeMessages.length - 1];
+        const preview: string | undefined = lastMessage?.content.replace(/\s+/g, " ").slice(0, 96);
+        return [
+            {
+                id: defaultSessionId,
+                title: modelAgentName,
+                preview,
+                timestamp: lastMessage?.timestamp,
+            },
+        ];
+    }, [activeMessages]);
+    const agent: AgentProfile = useMemo(() => {
+        return {
+            name: modelAgentName,
+            model: settings?.model ?? "未配置模型",
+            description: settings?.baseUrl ?? "OpenAI-compatible 模型",
+            presence: "online",
+        };
+    }, [settings]);
+
+    const handleSend: NonNullable<AgentChatProps["onSend"]> = (body, contact) => {
         if (isReplying) {
             return;
         }
@@ -95,25 +113,28 @@ function ChatPage() {
         if (content.length === 0) {
             return;
         }
-        const userMessage: ChatMessage = {
+        const userMessage: AgentMessageItem = {
             id: crypto.randomUUID(),
-            contactId: contact.id,
+            sessionId: contact.id,
             author: currentUser,
             content,
-            timestamp: new Date().toLocaleTimeString("zh-CN", {
-                hour: "2-digit",
-                minute: "2-digit",
-            }),
+            timestamp: formatMessageTime(),
             self: true,
+            role: "user",
             status: "sent",
         };
-        const history: LlmChatMessage[] = [...messages, userMessage].map((message: ChatMessage): LlmChatMessage => {
+        const history: LlmChatMessage[] = [
+            ...messages.filter((message: AgentMessageItem): boolean => {
+                return message.sessionId === contact.id;
+            }),
+            userMessage,
+        ].map((message: AgentMessageItem): LlmChatMessage => {
             return {
-                role: message.self ? "user" : "assistant",
+                role: message.role === "user" ? "user" : "assistant",
                 content: message.content,
             };
         });
-        setMessages((current) => {
+        setMessages((current: AgentMessageItem[]): AgentMessageItem[] => {
             return [...current, userMessage];
         });
         setIsReplying(true);
@@ -124,17 +145,15 @@ function ChatPage() {
                     notifyError(result.error ?? "模型请求失败");
                     return;
                 }
-                const assistantMessage: ChatMessage = {
+                const assistantMessage: AgentMessageItem = {
                     id: crypto.randomUUID(),
-                    contactId: contact.id,
-                    author: "大模型",
+                    sessionId: contact.id,
+                    author: modelAgentName,
                     content: result.content.length > 0 ? result.content : "（模型返回了空内容）",
-                    timestamp: new Date().toLocaleTimeString("zh-CN", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                    }),
+                    timestamp: formatMessageTime(),
+                    role: "agent",
                 };
-                setMessages((current) => {
+                setMessages((current: AgentMessageItem[]): AgentMessageItem[] => {
                     return [...current, assistantMessage];
                 });
                 void showSystemNotification({
@@ -166,8 +185,14 @@ function ChatPage() {
         if (result?.action !== "confirm") {
             return;
         }
-        const previous: ChatMessage[] = messages;
-        setMessages([...initialMessages]);
+        const previous: AgentMessageItem[] = messages;
+        const retainedMessages: AgentMessageItem[] = messages.filter((message: AgentMessageItem): boolean => {
+            return message.sessionId !== activeSessionId;
+        });
+        const resetMessages: AgentMessageItem[] = initialMessages.map((message: AgentMessageItem): AgentMessageItem => {
+            return { ...message, sessionId: activeSessionId };
+        });
+        setMessages([...retainedMessages, ...resetMessages]);
         const snackbar: SnackbarResult | null = await showSnackbar({
             message: "对话已清空。",
             actionLabel: "撤销",
@@ -192,59 +217,45 @@ function ChatPage() {
     return (
         <section className="chat-page">
             <div className="chat-page__bar">
-                <div className="chat-page__identity">
-                    <strong>{settings?.model ?? "未配置模型"}</strong>
-                    <span>{settings?.baseUrl ?? "请配置 API Base URL"}</span>
-                    <span className={settings?.hasKey ? "chat-page__key chat-page__key--ok" : "chat-page__key"}>
-                        {settings?.hasKey ? "API Key 已配置" : "缺少 API Key"}
-                    </span>
-                </div>
-                <div className="chat-page__bar-actions">
-                    <PeriodicityButton
-                        variant="ghost"
-                        disabled={isReplying || messages.length <= 1}
-                        onClick={() => {
-                            void handleClear();
-                        }}
-                    >
-                        清空对话
-                    </PeriodicityButton>
-                    <PeriodicityButton variant="outline" icon="Sync" onClick={() => { setSettingsOpen(true); }}>
-                        模型设置
-                    </PeriodicityButton>
-                </div>
+                <PeriodicityToolbar
+                    title={settings?.model ?? "未配置模型"}
+                    subtitle={settings?.baseUrl ?? "请配置 API Base URL"}
+                    actions={
+                        <div className="chat-page__bar-actions">
+                            <PeriodicityTag tone={settings?.hasKey ? "success" : "warning"} variant="outlined">
+                                {settings?.hasKey ? "API Key 已配置" : "缺少 API Key"}
+                            </PeriodicityTag>
+                            <PeriodicityButton
+                                variant="ghost"
+                                disabled={isReplying || activeMessages.length <= 1}
+                                onClick={() => {
+                                    void handleClear();
+                                }}
+                            >
+                                清空对话
+                            </PeriodicityButton>
+                        </div>
+                    }
+                />
             </div>
-            {isReplying && <p className="chat-page__status">模型正在生成回复…</p>}
-            <PeriodicityChat
-                className="chat-page__chat"
-                contacts={[modelContact]}
-                messages={messages}
-                value={modelContact.id}
-                onValueChange={() => {
-                    // Single-model conversation.
-                }}
-                onSend={handleSend}
-                currentUser={currentUser}
-                contactsTitle="会话"
-                contactsLabel="模型"
-                conversationLabel="对话"
-                placeholder="输入消息，Enter 发送，Shift+Enter 换行"
-                sendLabel="发送消息"
-            />
-            <LlmSettingsDialog
-                open={settingsOpen}
-                onClose={() => {
-                    setSettingsOpen(false);
-                }}
-                onSaved={(next: LlmPublicSettings) => {
-                    setSettings(next);
-                    showToast({
-                        title: "模型设置已保存",
-                        description: next.model,
-                        tone: "success",
-                    });
-                }}
-            />
+            <div className="chat-page__conversation">
+                <PeriodicityAgentChat
+                    agent={agent}
+                    sessions={sessions}
+                    messages={messages}
+                    value={activeSessionId}
+                    onValueChange={(value: string) => {
+                        setActiveSessionId(value);
+                    }}
+                    onSend={handleSend}
+                    sending={isReplying}
+                    currentUser={currentUser}
+                    historyTitle="会话"
+                    historyLabel="会话"
+                    placeholder="输入消息，Enter 发送，Shift+Enter 换行"
+                    sendLabel="发送消息"
+                />
+            </div>
         </section>
     );
 }

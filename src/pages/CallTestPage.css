@@ -1,8 +1,8 @@
 .calltest-page {
+    box-sizing: border-box;
     height: 100%;
     padding: 16px;
     overflow: auto;
-    box-sizing: border-box;
 }
 
 .calltest-intro {
@@ -16,26 +16,8 @@
 .calltest-platform {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
-    gap: 6px 10px;
+    gap: 6px;
     margin: 0 0 12px;
-    color: var(--color-on-surface-variant);
-    font-size: 0.66rem;
-}
-
-.calltest-platform strong {
-    color: var(--color-primary);
-    font-family: var(--font-mono, monospace);
-    font-size: 0.66rem;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-}
-
-.calltest-platform span {
-    padding: 2px 7px;
-    border: 1px solid var(--color-outline-variant);
-    border-radius: 999px;
-    background: var(--color-surface-container-low);
 }
 
 .calltest-grid {
@@ -48,8 +30,8 @@
 .calltest-column {
     display: flex;
     flex-direction: column;
-    gap: 14px;
     min-width: 0;
+    gap: 14px;
 }
 
 .calltest-card {
@@ -68,64 +50,16 @@
     gap: 10px;
 }
 
-.calltest-field {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    min-width: 0;
-    color: var(--color-on-surface-variant);
-    font-size: 0.68rem;
-}
-
-.calltest-field > span {
-    letter-spacing: 0.04em;
-}
-
-.calltest-field select {
-    width: 100%;
-    height: 36px;
-    padding: 0 10px;
-    border: 1px solid var(--color-outline);
-    border-radius: var(--radius-control, 10px);
-    background: var(--color-surface);
-    color: var(--color-on-surface);
-    font: inherit;
-    font-size: 0.74rem;
-}
-
-.calltest-field select:focus-visible {
-    outline: var(--focus-ring-width, 2px) solid var(--focus-ring-color, var(--color-primary));
-    outline-offset: 2px;
-}
-
-.calltest-checks {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
+.calltest-checks,
 .calltest-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
 }
 
-.calltest-result {
-    margin: 0;
-    padding: 9px 11px;
-    border: 1px solid var(--color-outline-variant);
-    border-radius: var(--radius-md, 8px);
-    background: var(--color-surface-container-low);
-    color: var(--color-on-surface-variant);
-    font-family: var(--font-mono, monospace);
-    font-size: 0.64rem;
-    line-height: 1.5;
-    overflow-wrap: anywhere;
-}
-
-.calltest-result--warning {
-    border-color: var(--color-warning);
-    background: var(--color-warning-container, rgba(237, 108, 2, 0.1));
+.calltest-checks {
+    flex-direction: column;
+    gap: 2px;
 }
 
 .calltest-note {
@@ -136,83 +70,8 @@
 }
 
 .calltest-log {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
     max-height: 360px;
-    margin: 0;
-    padding: 0;
-    overflow-y: auto;
-    list-style: none;
-}
-
-.calltest-log__empty {
-    margin: 0;
-    padding: 18px 8px;
-    color: var(--color-on-surface-variant);
-    font-size: 0.72rem;
-    text-align: center;
-}
-
-.calltest-log__item {
-    display: grid;
-    grid-template-columns: 8px minmax(0, 1fr) auto;
-    gap: 8px;
-    align-items: start;
-    padding: 8px 4px;
-    border-bottom: 1px solid var(--color-outline-variant);
-}
-
-.calltest-log__item:last-child {
-    border-bottom: 0;
-}
-
-.calltest-log__dot {
-    width: 6px;
-    height: 6px;
-    margin-top: 5px;
-    border-radius: 50%;
-    background: var(--color-on-surface-variant);
-}
-
-.calltest-log__dot--success {
-    background: var(--color-secondary);
-}
-
-.calltest-log__dot--warning {
-    background: var(--color-warning);
-}
-
-.calltest-log__dot--danger {
-    background: var(--color-error);
-}
-
-.calltest-log__body {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-}
-
-.calltest-log__body strong {
-    font-size: 0.7rem;
-    font-weight: 550;
-    line-height: 1.4;
-}
-
-.calltest-log__body span {
-    overflow-wrap: anywhere;
-    color: var(--color-on-surface-variant);
-    font-family: var(--font-mono, monospace);
-    font-size: 0.6rem;
-    line-height: 1.45;
-}
-
-.calltest-log__time {
-    color: var(--color-on-surface-variant);
-    font-family: var(--font-mono, monospace);
-    font-size: 0.58rem;
-    white-space: nowrap;
+    overflow: auto;
 }
 
 @media (max-width: 1000px) {

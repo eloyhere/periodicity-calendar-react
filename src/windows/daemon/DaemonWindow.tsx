@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import {
+    PeriodicityAlert,
     PeriodicityButton,
-    PeriodicityIcon,
+    PeriodicityEmptyState,
     PeriodicityTag,
+    PeriodicityTerminal,
+    PeriodicityToolbar,
 } from "periodicity-react";
 import type { PeriodicityIconName } from "periodicity-react";
 import type {
@@ -78,52 +81,50 @@ function DaemonWindow() {
 
     return (
         <div className="daemon-window">
-            <header className="daemon-window__header">
-                <div className="daemon-window__identity">
-                    <span className="daemon-window__pulse" aria-hidden="true" />
-                    <div>
-                        <strong>守护进程</strong>
-                        <span>程序错误处理 · v{snapshot?.appVersion ?? "0.0.0"} · Electron {snapshot?.electronVersion ?? "—"}</span>
-                    </div>
-                </div>
-                <div className="daemon-window__header-actions">
-                    <PeriodicityTag
-                        tone={snapshot && snapshot.total > 0 ? "danger" : "success"}
-                        variant="outlined"
-                    >
-                        {snapshot && snapshot.total > 0 ? `${String(snapshot.total)} 个错误` : "运行中"}
-                    </PeriodicityTag>
-                    {snapshot && !snapshot.mainWindowAlive && (
-                        <PeriodicityTag tone="warning" variant="outlined">主窗口已关闭</PeriodicityTag>
-                    )}
-                    <PeriodicityButton
-                        variant="quiet"
-                        size="sm"
-                        icon="Close"
-                        aria-label="关闭守护窗口"
-                        title="关闭"
-                        onClick={() => {
-                            handleAction("dismiss");
-                        }}
-                    />
-                </div>
-            </header>
+            <div className="daemon-window__header">
+                <PeriodicityToolbar
+                    title="守护进程"
+                    subtitle={`程序错误处理 · v${snapshot?.appVersion ?? "0.0.0"} · Electron ${snapshot?.electronVersion ?? "—"}`}
+                    actions={
+                        <div className="daemon-window__header-actions">
+                            <PeriodicityTag
+                                tone={snapshot && snapshot.total > 0 ? "danger" : "success"}
+                                variant="outlined"
+                            >
+                                {snapshot && snapshot.total > 0 ? `${String(snapshot.total)} 个错误` : "运行中"}
+                            </PeriodicityTag>
+                            {snapshot && !snapshot.mainWindowAlive && (
+                                <PeriodicityTag tone="warning" variant="outlined">主窗口已关闭</PeriodicityTag>
+                            )}
+                            <PeriodicityButton
+                                variant="quiet"
+                                size="sm"
+                                icon="Close"
+                                aria-label="关闭守护窗口"
+                                title="关闭"
+                                onClick={() => {
+                                    handleAction("dismiss");
+                                }}
+                            />
+                        </div>
+                    }
+                />
+            </div>
 
             <div className="daemon-window__body">
                 <aside className="daemon-window__list" aria-label="错误列表">
                     {snapshot && snapshot.errors.length > 0 ? (
                         snapshot.errors.map((error: DaemonErrorRecord) => {
                             return (
-                                <button
-                                    type="button"
+                                <PeriodicityButton
                                     key={error.id}
-                                    className={`daemon-window__item${selected?.id === error.id ? " daemon-window__item--active" : ""}`}
+                                    variant={selected?.id === error.id ? "outline" : "ghost"}
+                                    icon={KIND_ICONS[error.kind]}
                                     aria-pressed={selected?.id === error.id}
                                     onClick={() => {
                                         setSelectedId(error.id);
                                     }}
                                 >
-                                    <PeriodicityIcon name={KIND_ICONS[error.kind]} size={16} />
                                     <span className="daemon-window__item-body">
                                         <strong>{error.message}</strong>
                                         <span>
@@ -131,26 +132,22 @@ function DaemonWindow() {
                                             {error.count > 1 ? ` · ×${String(error.count)}` : ""}
                                         </span>
                                     </span>
-                                </button>
+                                </PeriodicityButton>
                             );
                         })
                     ) : (
-                        <p className="daemon-window__list-empty">尚未捕获错误。</p>
+                        <PeriodicityEmptyState icon="Check" title="尚未捕获错误" />
                     )}
                 </aside>
 
                 <section className="daemon-window__detail" aria-live="polite">
                     {selected ? (
                         <>
-                            <div className="daemon-window__detail-head">
-                                <div className="daemon-window__detail-title">
-                                    <span className="daemon-window__eyebrow">{KIND_LABELS[selected.kind]}</span>
-                                    <h2>{selected.message}</h2>
-                                </div>
-                                <PeriodicityTag tone={selected.fatal ? "danger" : "warning"} variant="outlined">
-                                    {selected.fatal ? "致命" : "非致命"}
-                                </PeriodicityTag>
-                            </div>
+                            <PeriodicityAlert
+                                tone={selected.fatal ? "danger" : "warning"}
+                                title={selected.message}
+                                description={`${KIND_LABELS[selected.kind]} · ${selected.fatal ? "致命" : "非致命"}`}
+                            />
                             <dl className="daemon-window__meta">
                                 <div><dt>时间</dt><dd>{formatTime(selected.at)}</dd></div>
                                 <div><dt>来源</dt><dd>{selected.source ?? "unknown"}</dd></div>
@@ -158,15 +155,13 @@ function DaemonWindow() {
                                 <div><dt>平台</dt><dd>{snapshot?.platform ?? "unknown"}</dd></div>
                             </dl>
                             {selected.detail && (
-                                <p className="daemon-window__note">{selected.detail}</p>
+                                <PeriodicityAlert tone="neutral" title="错误详情" description={selected.detail} />
                             )}
-                            <pre className="daemon-window__stack">{selected.stack ?? "没有堆栈信息。"}</pre>
+                            <PeriodicityTerminal title="堆栈信息" editable={false} wrap maxHeight={420} lines={[selected.stack ?? "没有堆栈信息。"]} />
                         </>
                     ) : (
                         <div className="daemon-window__empty">
-                            <PeriodicityIcon name="Shield" size={42} />
-                            <h2>守护进程运行中</h2>
-                            <p>主进程、渲染进程、preload、页面加载和未处理 Promise 都会被记录在这里。</p>
+                            <PeriodicityEmptyState icon="Shield" title="守护进程运行中" description="主进程、渲染进程、preload、页面加载和未处理 Promise 都会被记录在这里。" />
                         </div>
                     )}
                 </section>

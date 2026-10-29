@@ -8,108 +8,13 @@
     width: min(calc(100vw - 32px), 360px);
     max-height: 480px;
     overflow-y: auto;
-    overscroll-behavior: contain;
     pointer-events: auto;
 }
 
-.overlay-toast {
-    position: relative;
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    overflow: hidden;
-    padding: 12px 12px 12px 20px;
-    border: 1px solid var(--color-outline);
-    border-radius: var(--radius-md, 10px);
-    background: linear-gradient(150deg, var(--color-surface-container-high), var(--color-surface));
-    box-shadow: var(--elevation-2);
-    color: var(--color-on-surface);
-    pointer-events: auto;
-    animation: overlay-toast-enter var(--duration-fast, 0.2s) var(--ease-decelerate, ease-out);
-}
-
-.overlay-toast__stripe {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    width: 4px;
-    background: var(--toast-tone);
-}
-
-.overlay-toast--neutral {
-    --toast-tone: var(--color-on-surface-variant);
-}
-
-.overlay-toast--success {
-    --toast-tone: var(--color-secondary);
-}
-
-.overlay-toast--warning {
-    --toast-tone: var(--color-warning);
-}
-
-.overlay-toast--danger {
-    --toast-tone: var(--color-error);
-}
-
-.overlay-toast__icon {
-    display: inline-flex;
-    flex: none;
-    align-items: center;
-    justify-content: center;
-    width: 20px;
-    height: 20px;
-    color: var(--toast-tone);
-}
-
-.overlay-toast__content {
-    display: flex;
-    flex: 1 1 auto;
-    flex-direction: column;
-    gap: 3px;
-    min-width: 0;
-}
-
-.overlay-toast__title {
-    font-size: 0.82rem;
-    font-weight: 600;
-    line-height: 1.35;
-    overflow-wrap: anywhere;
-}
-
-.overlay-toast__description {
-    color: var(--color-on-surface-variant);
-    font-size: 0.72rem;
-    line-height: 1.45;
-    overflow-wrap: anywhere;
-}
-
-.overlay-toast__actions {
-    display: flex;
-    flex: none;
-    align-items: center;
-    gap: 2px;
-}
-
-.overlay-toast__actions .button {
-    -webkit-app-region: no-drag;
-}
-
-@keyframes overlay-toast-enter {
-    from {
-        opacity: 0;
-        transform: translateY(-8px) scale(0.98);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .overlay-toast {
-        animation: none;
+@media (max-width: 520px) {
+    .overlay-toast-region {
+        top: 12px;
+        right: 12px;
+        width: min(calc(100vw - 24px), 360px);
     }
 }

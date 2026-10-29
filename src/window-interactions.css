@@ -1,0 +1,26 @@
+/* This stylesheet only defines Electron hit testing for the app shell. */
+:where(html, body, #root) {
+    -webkit-app-region: no-drag;
+}
+
+.app-toolbar {
+    -webkit-app-region: drag;
+    user-select: none;
+}
+
+.app-toolbar :is(button, a, input, select, textarea, [role="button"], [contenteditable="true"]) {
+    -webkit-app-region: no-drag;
+}
+
+.app-body,
+.app-page,
+.app-page * {
+    -webkit-app-region: no-drag;
+}
+
+/* Dialogs, menus, notifications, and other library portals are mounted beside
+ * #root. Their whole surface must stay interactive when it overlaps a title bar. */
+body > :not(#root),
+body > :not(#root) * {
+    -webkit-app-region: no-drag;
+}

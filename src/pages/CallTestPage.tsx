@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type RefObject, type SetStateAction } from "react";
 import {
+    PeriodicityAlert,
     PeriodicityButton,
     PeriodicityCard,
     PeriodicityCheckbox,
+    PeriodicityEmptyState,
+    PeriodicitySelect,
     PeriodicityTag,
     PeriodicityTextArea,
     PeriodicityTextInput,
+    PeriodicityTimeline,
 } from "periodicity-react";
 import type {
     DialogResult,
@@ -259,235 +263,213 @@ function CallTestPage() {
                 这个页面直接调用主进程的 Notification 服务。应用在前台时，如果不勾选“仅应用不在前台时发送”，系统通知会立即弹出。
             </p>
             {platformInfo && (
-                <p className="calltest-platform">
-                    <strong>{platformInfo.label}</strong>
-                    <span>{platformInfo.version}</span>
-                    {platformInfo.requiresCodeSigning && <span>需要代码签名</span>}
-                    {platformInfo.requiresShortcut && <span>需要开始菜单快捷方式</span>}
-                </p>
+                <div className="calltest-platform">
+                    <PeriodicityTag tone="neutral">{platformInfo.label} {platformInfo.version}</PeriodicityTag>
+                    {platformInfo.requiresCodeSigning && <PeriodicityTag tone="warning" variant="outlined">需要代码签名</PeriodicityTag>}
+                    {platformInfo.requiresShortcut && <PeriodicityTag tone="warning" variant="outlined">需要开始菜单快捷方式</PeriodicityTag>}
+                </div>
             )}
             <div className="calltest-grid">
-                <PeriodicityCard
-                    className="calltest-card"
-                    eyebrow="SYSTEM NOTIFICATION"
-                    title="系统通知"
-                    action={
-                        <PeriodicityTag
-                            tone={supported === false ? "danger" : supported === true ? "success" : "neutral"}
-                            variant="outlined"
-                        >
-                            {supported === null ? "检测中" : supported ? "系统支持" : "系统不支持"}
-                        </PeriodicityTag>
-                    }
-                >
-                    <div className="calltest-form">
-                        <PeriodicityTextInput
-                            label="标题"
-                            value={title}
-                            maxLength={120}
-                            onChange={(event) => {
-                                setTitle(event.target.value);
-                            }}
-                        />
-                        <PeriodicityTextArea
-                            label="正文"
-                            value={body}
-                            rows={4}
-                            maxLength={600}
-                            showCount
-                            onChange={(event) => {
-                                setBody(event.target.value);
-                            }}
-                        />
-                        <div className="calltest-row">
-                            <label className="calltest-field">
-                                <span>紧急程度</span>
-                                <select
-                                    value={urgency}
-                                    onChange={(event) => {
-                                        setUrgency(event.target.value as SystemNotificationUrgency);
-                                    }}
-                                >
-                                    <option value="normal">normal · 普通</option>
-                                    <option value="critical">critical · 紧急</option>
-                                    <option value="low">low · 低</option>
-                                </select>
-                            </label>
-                            <label className="calltest-field">
-                                <span>超时行为</span>
-                                <select
-                                    value={timeoutType}
-                                    onChange={(event) => {
-                                        setTimeoutType(event.target.value as SystemNotificationTimeout);
-                                    }}
-                                >
-                                    <option value="default">default · 跟随系统</option>
-                                    <option value="never">never · 常驻</option>
-                                </select>
-                            </label>
-                        </div>
-                        <div className="calltest-checks">
-                            <PeriodicityCheckbox
-                                label="静默通知"
-                                description="不播放系统提示音。"
-                                checked={silent}
-                                onCheckedChange={(checked: boolean) => {
-                                    setSilent(checked);
-                                }}
-                            />
-                            <PeriodicityCheckbox
-                                label="仅应用不在前台时发送"
-                                description="应用窗口聚焦时直接跳过，避免与 Toast 重复。"
-                                checked={whenUnfocused}
-                                onCheckedChange={(checked: boolean) => {
-                                    setWhenUnfocused(checked);
-                                }}
-                            />
-                        </div>
-                        <div className="calltest-actions">
-                            <PeriodicityButton
-                                icon="Send"
-                                onClick={() => {
-                                    void handleSend();
-                                }}
-                                disabled={sending || supported === false}
-                            >
-                                {sending ? "发送中…" : "发送系统通知"}
-                            </PeriodicityButton>
-                            <PeriodicityButton
-                                variant="outline"
-                                icon="Play"
-                                onClick={handleDelayedSend}
-                                disabled={supported === false}
-                            >
-                                5 秒后发送
-                            </PeriodicityButton>
-                            <PeriodicityButton
-                                variant="outline"
-                                icon="Bell"
-                                onClick={() => {
-                                    window.notification.openCenter();
-                                    appendLog("已打开通知中心", "独立 Notification 窗口", "neutral");
-                                }}
-                            >
-                                通知中心
-                            </PeriodicityButton>
-                            <PeriodicityButton
-                                variant="outline"
-                                icon="Refresh"
-                                onClick={() => {
-                                    void checkSupport();
-                                }}
-                            >
-                                检查支持
-                            </PeriodicityButton>
-                            <PeriodicityButton
-                                variant="outline"
-                                onClick={() => {
-                                    void window.notification.openSettings().then(() => {
-                                        appendLog("已打开系统通知设置", "请确认通知总开关和应用通知权限已开启。", "neutral");
-                                    }).catch((error: unknown) => {
-                                        appendLog(
-                                            "打开系统通知设置失败",
-                                            error instanceof Error ? error.message : "系统设置不可用。",
-                                            "danger",
-                                        );
-                                    });
-                                }}
-                            >
-                                系统通知设置
-                            </PeriodicityButton>
-                            <PeriodicityButton
-                                variant="ghost"
-                                icon="Close"
-                                onClick={handleCloseLast}
-                                disabled={lastId.length === 0}
-                            >
-                                关闭最近一条
-                            </PeriodicityButton>
-                        </div>
-                        <p className={lastResult && !lastResult.shown ? "calltest-result calltest-result--warning" : "calltest-result"}>
-                            {resultText}
-                        </p>
-                    </div>
-                </PeriodicityCard>
-
-                <div className="calltest-column">
+                <div className="calltest-card">
                     <PeriodicityCard
-                        className="calltest-card"
-                        eyebrow="IN-APP SURFACES"
-                        title="应用内弹窗"
-                        action={<PeriodicityTag tone="neutral" variant="outlined">独立窗口</PeriodicityTag>}
-                    >
-                        <p className="calltest-note">
-                            Snackbar、Toast、Dialog 都有独立的渲染进程和窗口；这里可以直接触发并观察关闭原因。
-                        </p>
-                        <div className="calltest-actions">
-                            <PeriodicityButton
-                                variant="outline"
-                                icon="Message"
-                                onClick={() => {
-                                    void handleSnackbar();
-                                }}
-                            >
-                                Snackbar
-                            </PeriodicityButton>
-                            <PeriodicityButton
-                                variant="outline"
-                                icon="Info"
-                                onClick={() => {
-                                    void handleToast();
-                                }}
-                            >
-                                Toast
-                            </PeriodicityButton>
-                            <PeriodicityButton
-                                variant="outline"
-                                icon="Chat"
-                                onClick={() => {
-                                    void handleDialog();
-                                }}
-                            >
-                                Dialog
-                            </PeriodicityButton>
-                        </div>
-                    </PeriodicityCard>
-
-                    <PeriodicityCard
-                        className="calltest-card"
-                        eyebrow="EVENT LOG"
-                        title="事件日志"
+                        eyebrow="SYSTEM NOTIFICATION"
+                        title="系统通知"
                         action={
-                            <PeriodicityButton
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                    setEvents([]);
-                                }}
+                            <PeriodicityTag
+                                tone={supported === false ? "danger" : supported === true ? "success" : "neutral"}
+                                variant="outlined"
                             >
-                                清空
-                            </PeriodicityButton>
+                                {supported === null ? "检测中" : supported ? "系统支持" : "系统不支持"}
+                            </PeriodicityTag>
                         }
                     >
-                        {events.length === 0 ? (
-                            <p className="calltest-log__empty">发送通知后，这里会显示调用结果和系统事件。</p>
-                        ) : (
-                            <ul className="calltest-log">
-                                {events.map((entry: CallTestLogEntry) => {
-                                    return (
-                                        <li className="calltest-log__item" key={entry.id}>
-                                            <span className={`calltest-log__dot calltest-log__dot--${entry.tone}`} aria-hidden="true" />
-                                            <span className="calltest-log__body">
-                                                <strong>{entry.title}</strong>
-                                                {entry.detail && <span>{entry.detail}</span>}
-                                            </span>
-                                            <time className="calltest-log__time">{entry.at}</time>
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        )}
+                        <div className="calltest-form">
+                            <PeriodicityTextInput
+                                label="标题"
+                                value={title}
+                                maxLength={120}
+                                onChange={(event) => {
+                                    setTitle(event.target.value);
+                                }}
+                            />
+                            <PeriodicityTextArea
+                                label="正文"
+                                value={body}
+                                rows={4}
+                                maxLength={600}
+                                showCount
+                                onChange={(event) => {
+                                    setBody(event.target.value);
+                                }}
+                            />
+                            <div className="calltest-row">
+                                <PeriodicitySelect
+                                    label="紧急程度"
+                                    value={urgency}
+                                    options={[{ value: "normal", label: "normal · 普通" }, { value: "critical", label: "critical · 紧急" }, { value: "low", label: "low · 低" }]}
+                                    onChange={(value: string) => { setUrgency(value as SystemNotificationUrgency); }}
+                                />
+                                <PeriodicitySelect
+                                    label="超时行为"
+                                    value={timeoutType}
+                                    options={[{ value: "default", label: "default · 跟随系统" }, { value: "never", label: "never · 常驻" }]}
+                                    onChange={(value: string) => { setTimeoutType(value as SystemNotificationTimeout); }}
+                                />
+                            </div>
+                            <div className="calltest-checks">
+                                <PeriodicityCheckbox
+                                    label="静默通知"
+                                    description="不播放系统提示音。"
+                                    checked={silent}
+                                    onCheckedChange={(checked: boolean) => {
+                                        setSilent(checked);
+                                    }}
+                                />
+                                <PeriodicityCheckbox
+                                    label="仅应用不在前台时发送"
+                                    description="应用窗口聚焦时直接跳过，避免与 Toast 重复。"
+                                    checked={whenUnfocused}
+                                    onCheckedChange={(checked: boolean) => {
+                                        setWhenUnfocused(checked);
+                                    }}
+                                />
+                            </div>
+                            <div className="calltest-actions">
+                                <PeriodicityButton
+                                    icon="Send"
+                                    onClick={() => {
+                                        void handleSend();
+                                    }}
+                                    disabled={sending || supported === false}
+                                >
+                                    {sending ? "发送中…" : "发送系统通知"}
+                                </PeriodicityButton>
+                                <PeriodicityButton
+                                    variant="outline"
+                                    icon="Play"
+                                    onClick={handleDelayedSend}
+                                    disabled={supported === false}
+                                >
+                                5 秒后发送
+                                </PeriodicityButton>
+                                <PeriodicityButton
+                                    variant="outline"
+                                    icon="Bell"
+                                    onClick={() => {
+                                        window.notification.openCenter();
+                                        appendLog("已打开通知中心", "独立 Notification 窗口", "neutral");
+                                    }}
+                                >
+                                通知中心
+                                </PeriodicityButton>
+                                <PeriodicityButton
+                                    variant="outline"
+                                    icon="Refresh"
+                                    onClick={() => {
+                                        void checkSupport();
+                                    }}
+                                >
+                                检查支持
+                                </PeriodicityButton>
+                                <PeriodicityButton
+                                    variant="outline"
+                                    onClick={() => {
+                                        void window.notification.openSettings().then(() => {
+                                            appendLog("已打开系统通知设置", "请确认通知总开关和应用通知权限已开启。", "neutral");
+                                        }).catch((error: unknown) => {
+                                            appendLog(
+                                                "打开系统通知设置失败",
+                                                error instanceof Error ? error.message : "系统设置不可用。",
+                                                "danger",
+                                            );
+                                        });
+                                    }}
+                                >
+                                系统通知设置
+                                </PeriodicityButton>
+                                <PeriodicityButton
+                                    variant="ghost"
+                                    icon="Close"
+                                    onClick={handleCloseLast}
+                                    disabled={lastId.length === 0}
+                                >
+                                关闭最近一条
+                                </PeriodicityButton>
+                            </div>
+                            <PeriodicityAlert title="发送结果" description={resultText} tone={lastResult ? lastResult.shown ? "success" : "warning" : "neutral"} />
+                        </div>
                     </PeriodicityCard>
+                </div>
+
+                <div className="calltest-column">
+                    <div className="calltest-card">
+                        <PeriodicityCard
+                            eyebrow="IN-APP SURFACES"
+                            title="应用内弹窗"
+                            action={<PeriodicityTag tone="neutral" variant="outlined">独立窗口</PeriodicityTag>}
+                        >
+                            <p className="calltest-note">
+                            Snackbar、Toast、Dialog 都有独立的渲染进程和窗口；这里可以直接触发并观察关闭原因。
+                            </p>
+                            <div className="calltest-actions">
+                                <PeriodicityButton
+                                    variant="outline"
+                                    icon="Message"
+                                    onClick={() => {
+                                        void handleSnackbar();
+                                    }}
+                                >
+                                Snackbar
+                                </PeriodicityButton>
+                                <PeriodicityButton
+                                    variant="outline"
+                                    icon="Info"
+                                    onClick={() => {
+                                        void handleToast();
+                                    }}
+                                >
+                                Toast
+                                </PeriodicityButton>
+                                <PeriodicityButton
+                                    variant="outline"
+                                    icon="Chat"
+                                    onClick={() => {
+                                        void handleDialog();
+                                    }}
+                                >
+                                Dialog
+                                </PeriodicityButton>
+                            </div>
+                        </PeriodicityCard>
+                    </div>
+
+                    <div className="calltest-card">
+                        <PeriodicityCard
+                            eyebrow="EVENT LOG"
+                            title="事件日志"
+                            action={
+                                <PeriodicityButton
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                        setEvents([]);
+                                    }}
+                                >
+                                    清空
+                                </PeriodicityButton>
+                            }
+                        >
+                            {events.length === 0 ? (
+                                <PeriodicityEmptyState icon="Bell" title="暂无事件" description="发送通知后，这里会显示调用结果和系统事件。" />
+                            ) : (
+                                <div className="calltest-log">
+                                    <PeriodicityTimeline items={events.map((entry: CallTestLogEntry) => {
+                                        return { id: entry.id, title: entry.title, time: entry.at, description: entry.detail, tone: entry.tone };
+                                    })} />
+                                </div>
+                            )}
+                        </PeriodicityCard>
+                    </div>
                 </div>
             </div>
         </section>

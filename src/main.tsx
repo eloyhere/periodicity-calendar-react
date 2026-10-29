@@ -1,11 +1,12 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { HashRouter } from "react-router-dom";
-import { PeriodicityInternational, PeriodicityTheme } from "periodicity-react";
 import "periodicity-react/styles.css";
-import App from "./App.tsx";
-import AppErrorBoundary from "./components/AppErrorBoundary.tsx";
+import "./motion.css";
+import type { AppPreferences } from "../electron/settings/types";
+import AppShell from "./AppShell.tsx";
+import { readPreferences } from "./preferences/preferences";
 import "./index.css";
+import "./window-interactions.css";
 
 window.addEventListener("error", (event: ErrorEvent) => {
     window.daemon.report({
@@ -26,19 +27,20 @@ window.addEventListener("unhandledrejection", (event: PromiseRejectionEvent) => 
     });
 });
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-    <React.StrictMode>
-        <PeriodicityTheme className="app-theme" theme="default" mode="light" density="compact">
-            <PeriodicityInternational locale="zh-CN">
-                <AppErrorBoundary>
-                    <HashRouter>
-                        <App />
-                    </HashRouter>
-                </AppErrorBoundary>
-            </PeriodicityInternational>
-        </PeriodicityTheme>
-    </React.StrictMode>,
-);
+/**
+ * Loads the stored appearance preferences before the first paint, then mounts the app so
+ * the shell never flashes the wrong palette.
+ */
+async function bootstrap(): Promise<void> {
+    const preferences: AppPreferences = await readPreferences();
+    ReactDOM.createRoot(document.getElementById("root")!).render(
+        <React.StrictMode>
+            <AppShell initial={preferences} />
+        </React.StrictMode>,
+    );
+}
+
+void bootstrap();
 
 // Use contextBridge
 window.ipcRenderer.on("main-process-message", (_event, message) => {

@@ -1,10 +1,18 @@
 import { useEffect, useRef, useState, type ChangeEvent, type Dispatch, type RefObject, type SetStateAction } from "react";
+import { useNavigate } from "react-router-dom";
 import {
+    PeriodicityAlert,
     PeriodicityButton,
     PeriodicityCard,
-    PeriodicityIcon,
+    PeriodicityEmptyState,
+    PeriodicityMarkdown,
+    PeriodicityMessageList,
+    PeriodicityRing,
     PeriodicityTag,
+    PeriodicityTerminal,
     PeriodicityTextArea,
+    PeriodicityTimeline,
+    PeriodicityToolbar,
 } from "periodicity-react";
 import type { PeriodicityIconName } from "periodicity-react";
 import type {
@@ -14,7 +22,6 @@ import type {
     LlmPublicSettings,
     WorkspaceInfo,
 } from "../../electron/llm/types";
-import LlmSettingsDialog from "../components/LlmSettingsDialog";
 import { showSystemNotification, showToast } from "../notifications";
 import "./WorkflowPage.css";
 
@@ -73,6 +80,7 @@ function eventTitle(event: AgentEvent): string {
 }
 
 function WorkflowPage() {
+    const navigate: ReturnType<typeof useNavigate> = useNavigate();
     const [settings, setSettings]: [LlmPublicSettings | null, Dispatch<SetStateAction<LlmPublicSettings | null>>] = useState<LlmPublicSettings | null>(null);
     const [workspace, setWorkspace]: [WorkspaceInfo | null, Dispatch<SetStateAction<WorkspaceInfo | null>>] = useState<WorkspaceInfo | null>(null);
     const [messages, setMessages]: [AgentMessage[], Dispatch<SetStateAction<AgentMessage[]>>] = useState<AgentMessage[]>([
@@ -86,9 +94,9 @@ function WorkflowPage() {
     const [events, setEvents]: [AgentEvent[], Dispatch<SetStateAction<AgentEvent[]>>] = useState<AgentEvent[]>([]);
     const [prompt, setPrompt]: [string, Dispatch<SetStateAction<string>>] = useState<string>("");
     const [running, setRunning]: [boolean, Dispatch<SetStateAction<boolean>>] = useState<boolean>(false);
+    const [pickingWorkspace, setPickingWorkspace]: [boolean, Dispatch<SetStateAction<boolean>>] = useState<boolean>(false);
     const [error, setError]: [string, Dispatch<SetStateAction<string>>] = useState<string>("");
     const [usage, setUsage]: [string, Dispatch<SetStateAction<string>>] = useState<string>("");
-    const [settingsOpen, setSettingsOpen]: [boolean, Dispatch<SetStateAction<boolean>>] = useState<boolean>(false);
     const composerRef: RefObject<HTMLTextAreaElement | null> = useRef<HTMLTextAreaElement | null>(null);
 
     const refreshWorkspace: () => Promise<void> = async () => {
@@ -129,6 +137,43 @@ function WorkflowPage() {
             unsubscribe();
         };
     }, []);
+
+    const handlePickWorkspace: () => Promise<void> = async (): Promise<void> => {
+        if (pickingWorkspace || running) {
+            return;
+        }
+        setPickingWorkspace(true);
+        try {
+            const picked: string | null = await window.agent.pickDirectory();
+            if (picked === null) {
+                return;
+            }
+            const current: LlmPublicSettings = await window.llm.getSettings();
+            const saved: LlmPublicSettings = await window.llm.saveSettings({
+                baseUrl: current.baseUrl,
+                model: current.model,
+                apiKey: "",
+                workspaceRoot: picked,
+            });
+            setSettings(saved);
+            await refreshWorkspace();
+            showToast({
+                title: "工作区已切换",
+                description: picked,
+                tone: "success",
+            });
+        } catch (pickError: unknown) {
+            const message: string = pickError instanceof Error ? pickError.message : "选择工作区失败";
+            setError(message);
+            showToast({
+                title: "选择工作区失败",
+                description: message,
+                tone: "danger",
+            });
+        } finally {
+            setPickingWorkspace(false);
+        }
+    };
 
     const handleRun: () => Promise<void> = async () => {
         const task: string = prompt.trim();
@@ -217,196 +262,184 @@ function WorkflowPage() {
     return (
         <div className="agent-main">
             <div className="agent-statusbar">
-                <div className="agent-statusbar__facts">
-                    <span><em>模型</em><strong>{settings?.model ?? "未配置"}</strong></span>
-                    <span><em>工作区</em><strong>{workspace?.branch ?? "no git"}</strong></span>
-                    <span><em>文件</em><strong>{workspace?.files.length ?? 0}</strong></span>
-                    <span><em>运行时</em><strong>PowerShell + Git</strong></span>
-                    <PeriodicityTag tone={running ? "primary" : settings?.hasKey ? "success" : "warning"} variant="outlined">
-                        {running ? "运行中" : settings?.hasKey ? "就绪" : "缺少 Key"}
-                    </PeriodicityTag>
-                </div>
-                <div className="agent-statusbar__actions">
-                    <PeriodicityButton variant="ghost" icon="Refresh" onClick={() => { void refreshWorkspace(); }} disabled={running}>
-                        刷新
-                    </PeriodicityButton>
-                    <PeriodicityButton variant="outline" icon="Sync" onClick={() => { setSettingsOpen(true); }}>
-                        模型设置
-                    </PeriodicityButton>
-                    <PeriodicityButton
-                        icon={settings?.hasKey ? "Play" : "Sync"}
-                        onClick={() => {
-                            if (settings?.hasKey) {
-                                composerRef.current?.focus();
-                                return;
-                            }
-                            setSettingsOpen(true);
-                        }}
-                    >
-                        {settings?.hasKey ? "开始任务" : "配置模型"}
-                    </PeriodicityButton>
-                </div>
+                <PeriodicityToolbar content={
+                    <div className="agent-statusbar__facts">
+                        <span><em>模型</em><strong>{settings?.model ?? "未配置"}</strong></span>
+                        <span><em>工作区</em><strong>{workspace?.branch ?? "no git"}</strong></span>
+                        <span><em>文件</em><strong>{workspace?.files.length ?? 0}</strong></span>
+                        <span><em>运行时</em><strong>PowerShell + Git</strong></span>
+                        <PeriodicityTag tone={running ? "primary" : settings?.hasKey ? "success" : "warning"} variant="outlined">
+                            {running ? "运行中" : settings?.hasKey ? "就绪" : "缺少 Key"}
+                        </PeriodicityTag>
+                    </div>
+                } suffix={
+                    <div className="agent-statusbar__actions">
+                        <PeriodicityButton variant="ghost" icon="Refresh" onClick={() => { void refreshWorkspace(); }} disabled={running}>
+                            刷新
+                        </PeriodicityButton>
+                        <PeriodicityButton variant="outline" icon="Folder" onClick={() => { void handlePickWorkspace(); }} disabled={running || pickingWorkspace}>
+                            {pickingWorkspace ? "选择中…" : "选择工作区"}
+                        </PeriodicityButton>
+                        <PeriodicityButton
+                            icon={settings?.hasKey ? "Play" : "Setting"}
+                            onClick={() => {
+                                if (settings?.hasKey) {
+                                    composerRef.current?.focus();
+                                    return;
+                                }
+                                navigate("/settings");
+                            }}
+                        >
+                            {settings?.hasKey ? "开始任务" : "去设置"}
+                        </PeriodicityButton>
+                    </div>
+                } />
             </div>
             {!settings?.hasKey && (
-                <div className="agent-banner agent-banner--warning">
-                    <strong>缺少 API Key</strong>
-                    <span>配置模型后才能运行工作流；所有文件工具仍限制在当前工作目录。</span>
-                    <PeriodicityButton variant="outline" onClick={() => { setSettingsOpen(true); }}>
-                                打开设置
-                    </PeriodicityButton>
+                <div className="agent-banner">
+                    <PeriodicityAlert
+                        tone="warning"
+                        title="缺少 API Key"
+                        description="配置模型后才能运行工作流；所有文件工具仍限制在当前工作目录。"
+                        action={<PeriodicityButton variant="outline" onClick={() => { navigate("/settings"); }}>打开设置</PeriodicityButton>}
+                    />
                 </div>
             )}
             {error && (
-                <div className="agent-banner agent-banner--error" role="alert">
-                    <strong>执行失败</strong>
-                    <span>{error}</span>
+                <div className="agent-banner">
+                    <PeriodicityAlert tone="danger" title="执行失败" description={error} />
                 </div>
             )}
             <div className="agent-grid">
                 <div className="agent-column">
-                    <PeriodicityCard
-                        className="agent-card"
-                        eyebrow="workspace"
-                        title="工作目录"
-                        action={<PeriodicityTag tone="neutral" variant="outlined">{workspace?.branch ?? "no git"}</PeriodicityTag>}
-                    >
-                        <code className="agent-root">{workspace?.root ?? "—"}</code>
-                        <ul className="agent-files">
-                            {(workspace?.files ?? []).slice(0, 80).map((file: string) => {
-                                return <li key={file}>{file}</li>;
-                            })}
-                        </ul>
-                    </PeriodicityCard>
-                    <PeriodicityCard className="agent-card" eyebrow="git" title="变更">
-                        <pre className="agent-git">{workspace?.gitStatus ?? "—"}</pre>
-                    </PeriodicityCard>
-                    <PeriodicityCard className="agent-card" eyebrow="self" title="我能做什么">
-                        <div className="agent-tools">
-                            {TOOL_LABELS.map((tool: string) => {
-                                return (
-                                    <span className="agent-tool" key={tool}>
-                                        <PeriodicityIcon name="Check" size={14} />
-                                        {tool}
-                                    </span>
-                                );
-                            })}
-                        </div>
-                        <dl className="agent-facts">
-                            <div><dt>read/write</dt><dd>workspace only</dd></div>
-                            <div><dt>shell</dt><dd>PowerShell · 60s</dd></div>
-                            <div><dt>git</dt><dd>status / diff</dd></div>
-                            <div><dt>model</dt><dd>{settings?.model ?? "—"}</dd></div>
-                        </dl>
-                    </PeriodicityCard>
-                </div>
-
-                <div className="agent-column agent-column--chat">
-                    <PeriodicityCard
-                        className="agent-card agent-chat"
-                        eyebrow="conversation"
-                        title="与模型协作"
-                        action={<PeriodicityTag tone={running ? "primary" : "neutral"} variant="outlined">{running ? "运行中" : "就绪"}</PeriodicityTag>}
-                    >
-                        <div className="agent-messages">
-                            {messages.map((message: AgentMessage) => {
-                                return (
-                                    <article className={`agent-message agent-message--${message.role}`} key={message.id}>
-                                        <header>
-                                            <strong>{message.role === "user" ? "我" : "模型"}</strong>
-                                            <span>{message.time}</span>
-                                        </header>
-                                        <p>{message.content}</p>
-                                    </article>
-                                );
-                            })}
-                            {running && (
-                                <div className="agent-thinking">
-                                    <PeriodicityIcon name="Sync" size={16} />
-                                            模型正在读文件 / 运行命令…
-                                </div>
-                            )}
-                        </div>
-                        <div className="agent-composer">
-                            <PeriodicityTextArea
-                                ref={composerRef}
-                                label="任务"
-                                value={prompt}
-                                onChange={(event: ChangeEvent<HTMLTextAreaElement>) => {
-                                    setPrompt(event.target.value);
-                                }}
-                                rows={3}
-                                maxLength={6000}
-                                showCount
-                                placeholder="例如：检查工作流页为什么报错，修复并运行 lint / build 验证。"
-                            />
-                            <div className="agent-composer__actions">
-                                <span>{usage || "工具调用会实时出现在右侧轨迹。"}</span>
-                                <PeriodicityButton icon="Play" onClick={() => { void handleRun(); }} disabled={running || prompt.trim().length === 0}>
-                                    {running ? "运行中…" : "运行"}
-                                </PeriodicityButton>
-                            </div>
-                        </div>
-                    </PeriodicityCard>
-                </div>
-
-                <div className="agent-column">
-                    <PeriodicityCard
-                        className="agent-card"
-                        eyebrow="trace"
-                        title="运行轨迹"
-                        action={<PeriodicityTag tone="neutral" variant="outlined">{toolEvents.length} 事件</PeriodicityTag>}
-                    >
-                        {toolEvents.length === 0 ? (
-                            <p className="agent-empty">运行任务后，这里会显示每次工具调用与结果。</p>
-                        ) : (
-                            <div className="agent-trace">
-                                {toolEvents.map((event, index: number) => {
+                    <div className="agent-card">
+                        <PeriodicityCard
+                            eyebrow="workspace"
+                            title="工作目录"
+                            action={<PeriodicityTag tone="neutral" variant="outlined">{workspace?.branch ?? "no git"}</PeriodicityTag>}
+                        >
+                            <code className="agent-root">{workspace?.root ?? "—"}</code>
+                            <ul className="agent-files">
+                                {(workspace?.files ?? []).slice(0, 80).map((file: string) => {
+                                    return <li key={file}>{file}</li>;
+                                })}
+                            </ul>
+                        </PeriodicityCard>
+                    </div>
+                    <div className="agent-card">
+                        <PeriodicityCard eyebrow="git" title="变更">
+                            <PeriodicityTerminal title="Git 状态" lines={[workspace?.gitStatus || "工作区暂无变更"]} editable={false} maxHeight={240} wrap />
+                        </PeriodicityCard>
+                    </div>
+                    <div className="agent-card">
+                        <PeriodicityCard eyebrow="self" title="我能做什么">
+                            <div className="agent-tools">
+                                {TOOL_LABELS.map((tool: string) => {
                                     return (
-                                        <article className={`agent-event agent-event--${event.type}`} key={`${event.type}-${String(index)}`}>
-                                            <header>
-                                                <PeriodicityIcon name={eventIcon(event)} size={14} />
-                                                <strong>{eventTitle(event)}</strong>
-                                            </header>
-                                            {event.type === "tool_call" && <pre>{event.arguments}</pre>}
-                                            {event.type === "tool_result" && (
-                                                <>
-                                                    <PeriodicityTag tone={event.ok ? "success" : "danger"} variant="outlined">
-                                                        {event.ok ? "ok" : "error"} · {event.durationMs}ms
-                                                    </PeriodicityTag>
-                                                    <pre>{event.output.slice(0, 2500)}</pre>
-                                                </>
-                                            )}
-                                            {event.type === "error" && <p>{event.message}</p>}
-                                        </article>
+                                        <PeriodicityTag key={tool} tone="neutral" variant="outlined">{tool}</PeriodicityTag>
                                     );
                                 })}
                             </div>
-                        )}
-                    </PeriodicityCard>
-                    <PeriodicityCard className="agent-card" eyebrow="limits" title="边界">
-                        <p className="agent-note">
-                                    文件和 git 操作限制在工作目录；PowerShell 允许试错，但不会自动把密钥写进文件。
-                                    每次修改后请让模型跑 lint / build。
-                        </p>
-                    </PeriodicityCard>
+                            <dl className="agent-facts">
+                                <div><dt>read/write</dt><dd>workspace only</dd></div>
+                                <div><dt>shell</dt><dd>PowerShell · 60s</dd></div>
+                                <div><dt>git</dt><dd>status / diff</dd></div>
+                                <div><dt>model</dt><dd>{settings?.model ?? "—"}</dd></div>
+                            </dl>
+                        </PeriodicityCard>
+                    </div>
+                </div>
+
+                <div className="agent-column agent-column--chat">
+                    <div className="agent-card workflow-chat-panel">
+                        <PeriodicityCard
+                            eyebrow="conversation"
+                            title="与模型协作"
+                            action={<PeriodicityTag tone={running ? "primary" : "neutral"} variant="outlined">{running ? "运行中" : "就绪"}</PeriodicityTag>}
+                        >
+                            <div className="agent-messages">
+                                <PeriodicityMessageList
+                                    currentUser="我"
+                                    messages={messages.map((message: AgentMessage) => {
+                                        return {
+                                            id: message.id,
+                                            author: message.role === "user" ? "我" : "模型",
+                                            self: message.role === "user",
+                                            timestamp: message.time,
+                                            content: <PeriodicityMarkdown source={message.content} />,
+                                        };
+                                    })}
+                                />
+                                {running && (
+                                    <div className="agent-thinking" role="status">
+                                        <PeriodicityRing size="sm" />
+                                            模型正在读文件 / 运行命令…
+                                    </div>
+                                )}
+                            </div>
+                            <div className="agent-composer">
+                                <PeriodicityTextArea
+                                    ref={composerRef}
+                                    label="任务"
+                                    value={prompt}
+                                    onChange={(event: ChangeEvent<HTMLTextAreaElement>) => {
+                                        setPrompt(event.target.value);
+                                    }}
+                                    rows={3}
+                                    maxLength={6000}
+                                    showCount
+                                    placeholder="例如：检查工作流页为什么报错，修复并运行 lint / build 验证。"
+                                />
+                                <div className="agent-composer__actions">
+                                    <span>{usage || "工具调用会实时出现在右侧轨迹。"}</span>
+                                    <PeriodicityButton icon="Play" onClick={() => { void handleRun(); }} disabled={running || prompt.trim().length === 0}>
+                                        {running ? "运行中…" : "运行"}
+                                    </PeriodicityButton>
+                                </div>
+                            </div>
+                        </PeriodicityCard>
+                    </div>
+                </div>
+
+                <div className="agent-column">
+                    <div className="agent-card">
+                        <PeriodicityCard
+                            eyebrow="trace"
+                            title="运行轨迹"
+                            action={<PeriodicityTag tone="neutral" variant="outlined">{toolEvents.length} 事件</PeriodicityTag>}
+                        >
+                            {toolEvents.length === 0 ? (
+                                <PeriodicityEmptyState icon="Play" title="暂无运行轨迹" description="运行任务后，这里会显示每次工具调用与结果。" />
+                            ) : (
+                                <div className="agent-trace">
+                                    <PeriodicityTimeline items={toolEvents.map((event, index: number) => {
+                                        return {
+                                            id: `${event.type}-${String(index)}`,
+                                            title: eventTitle(event),
+                                            icon: eventIcon(event),
+                                            tone: event.type === "error" || (event.type === "tool_result" && !event.ok) ? "danger" as const : "neutral" as const,
+                                            time: event.type === "tool_result" ? `${String(event.durationMs)}ms` : (void 0),
+                                            description: event.type === "tool_call"
+                                                ? <pre>{event.arguments}</pre>
+                                                : event.type === "tool_result"
+                                                    ? <PeriodicityTerminal title="工具输出" editable={false} wrap maxHeight={240} lines={[event.output.slice(0, 2500)]} />
+                                                    : event.type === "error" ? event.message : "",
+                                        };
+                                    })} />
+                                </div>
+                            )}
+                        </PeriodicityCard>
+                    </div>
+                    <div className="agent-card">
+                        <PeriodicityCard eyebrow="limits" title="边界">
+                            <p className="agent-note">
+                                文件和 git 操作限制在工作目录；PowerShell 允许试错，但不会自动把密钥写进文件。
+                                每次修改后请让模型跑 lint / build。
+                            </p>
+                        </PeriodicityCard>
+                    </div>
                 </div>
             </div>
-            <LlmSettingsDialog
-                open={settingsOpen}
-                onClose={() => {
-                    setSettingsOpen(false);
-                }}
-                onSaved={(next: LlmPublicSettings) => {
-                    setSettings(next);
-                    setError("");
-                    showToast({
-                        title: "模型设置已保存",
-                        description: next.model,
-                        tone: "success",
-                    });
-                    void refreshWorkspace();
-                }}
-            />
         </div>
     );
 }

@@ -1,9 +1,9 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, dialog as electronDialog, ipcMain, type OpenDialogOptions, type OpenDialogReturnValue } from "electron";
 import path from "node:path";
 import { AmpEngine } from "../amp/engine";
 import type { AmpActRequest, AmpAccountRequest, AmpLevel, AmpResolveRequest } from "../amp/types";
 import { callModel } from "../llm/provider";
-import { loadSettings, publicSettings, saveSettings } from "../llm/settings";
+import { clearApiKey, loadSettings, publicSettings, saveSettings } from "../llm/settings";
 import type {
     AgentRunRequest,
     LlmChatRequest,
@@ -19,6 +19,9 @@ import { DialogProcess } from "../service/dialog";
 import { NotificationProcess } from "../service/notification";
 import { SnackbarProcess } from "../service/snackbar";
 import { ToastProcess } from "../service/toast";
+import { collectAppInfo } from "../settings/appInfo";
+import { loadPreferences, savePreferences } from "../settings/preferences";
+import type { SaveAppPreferences } from "../settings/types";
 import {
     PRELOAD_PATH,
     RENDERER_DIST,
@@ -126,6 +129,22 @@ ipcMain.handle("llm:save-settings", (_event, settings: LlmSaveSettings) => {
     return saveSettings(settings);
 });
 
+ipcMain.handle("llm:clear-api-key", () => {
+    return clearApiKey();
+});
+
+ipcMain.handle("preferences:get", () => {
+    return loadPreferences();
+});
+
+ipcMain.handle("preferences:save", (_event, input: SaveAppPreferences) => {
+    return savePreferences(input);
+});
+
+ipcMain.handle("app:info", () => {
+    return collectAppInfo();
+});
+
 ipcMain.handle("llm:chat", async (_event, request: LlmChatRequest): Promise<LlmChatResult> => {
     const settings: LlmSettings = loadSettings();
     if (settings.apiKey.length === 0) {
@@ -163,6 +182,21 @@ ipcMain.handle("workspace:info", () => {
     return getWorkspaceInfo(loadSettings().workspaceRoot);
 });
 
+ipcMain.handle("workspace:pick-directory", async (): Promise<string | null> => {
+    const options: OpenDialogOptions = {
+        title: "选择工作区",
+        defaultPath: loadSettings().workspaceRoot,
+        properties: ["openDirectory", "createDirectory"],
+    };
+    const result: OpenDialogReturnValue = win !== null && !win.isDestroyed()
+        ? await electronDialog.showOpenDialog(win, options)
+        : await electronDialog.showOpenDialog(options);
+    if (result.canceled || result.filePaths.length === 0) {
+        return null;
+    }
+    return result.filePaths[0];
+});
+
 function createWindow(): void {
     win = new BrowserWindow({
         width: 1440,
@@ -181,8 +215,6 @@ function createWindow(): void {
             contextIsolation: true,
             nodeIntegration: false,
             sandbox: true,
-            defaultFontSize: 16,
-            minimumFontSize: 16,
         },
     });
 

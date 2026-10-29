@@ -14,4 +14,5 @@ export const appNavigationItems: readonly AppNavigationItem[] = [
     { value: "/synodic", label: "朔望表", icon: "Moon" },
     { value: "/solar-terms", label: "节气表", icon: "Sun" },
     { value: "/xuanyuan", label: "轩辕历", icon: "History" },
+    { value: "/settings", label: "设置", icon: "Wrench" },
 ];

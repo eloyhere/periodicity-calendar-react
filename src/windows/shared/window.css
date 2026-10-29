@@ -5,22 +5,9 @@ html.overlay-window #root {
     height: 100%;
     margin: 0;
     overflow: hidden;
-    background: transparent !important;
+    background: transparent;
 }
 
-html.overlay-window.periodicity-theme {
-    color-scheme: light;
-    background: transparent !important;
-}
-
-html.overlay-window body {
-    font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-}
-
-html.overlay-window .overlay-theme.periodicity-theme {
-    width: 100%;
-    height: 100%;
-    background: transparent !important;
+.overlay-theme {
+    display: contents;
 }

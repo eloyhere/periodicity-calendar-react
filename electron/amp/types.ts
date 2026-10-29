@@ -182,6 +182,13 @@ export interface AmpProcess {
     steps: AmpProcessStep[];
 }
 
+export interface AmpSignature {
+    role: "self" | "host" | "registry" | "org" | "tenant";
+    alg: "ed25519";
+    kid: string;
+    sig: string;
+}
+
 export interface AmpManifestView {
     id: string;
     version: number;
@@ -191,6 +198,8 @@ export interface AmpManifestView {
     claims: AmpClaim[];
     affordances: AmpAffordance[];
     process: AmpProcess;
+    signatures?: AmpSignature[];
+    public_key?: JsonWebKey;
 }
 
 export interface AmpValuesView {
@@ -260,6 +269,16 @@ export interface AmpScoreComponents {
     diversity: number;
 }
 
+export interface AmpScoreInputs {
+    voi: number;
+    goalFit: number;
+    uncertainty: number;
+    novelty: number;
+    costTokens: number;
+    risk: number;
+    trustCap: number;
+}
+
 export interface AmpSliceItem {
     kind: "claim" | "affordance";
     id: string;
@@ -267,6 +286,35 @@ export interface AmpSliceItem {
     line: string;
     value: number;
     components: AmpScoreComponents;
+    inputs?: AmpScoreInputs;
+}
+
+export interface AmpFrameView {
+    id: string;
+    digest: string;
+    mode: string;
+    cycle: number;
+    slots: number;
+    ignored: number;
+}
+
+export interface AmpImpactView {
+    changed: string;
+    affected: string[];
+}
+
+export interface AmpLedgerCheckpoint {
+    amp: "0.1";
+    kind: "ledger-checkpoint";
+    tenant: string;
+    agent: string;
+    seq: number;
+    count: number;
+    tip: string;
+    prev?: string;
+    issued: string;
+    kid: string;
+    sig: string;
 }
 
 export interface AmpWhyNot {
@@ -317,6 +365,12 @@ export interface AmpSelfAttention {
     context_utilization: number;
     slice_size: number;
     lease_expires: string;
+    health?: {
+        utilization: number;
+        pressure: number;
+        headroom: number;
+        rest: boolean;
+    };
 }
 
 export interface AmpSelfCalibration {
@@ -358,6 +412,7 @@ export interface AmpSelfView {
     last_receipts: string[];
     ledger_cursor: number;
     horizon: string[];
+    throughput?: number;
 }
 
 export interface AmpDeclareRequest {
@@ -388,6 +443,9 @@ export interface AmpSnapshot {
     self?: AmpSelfView;
     latestHandle?: string;
     notice: string;
+    frame?: AmpFrameView;
+    impact?: AmpImpactView;
+    ledger_checkpoint?: AmpLedgerCheckpoint;
 }
 
 export interface AmpActRequest {
@@ -429,6 +487,11 @@ export interface AmpResolveData {
     lineage: string[];
     taint: AmpTaint;
     cost: AmpCost;
+    page?: {
+        tokens: number;
+        total_pages: number;
+        next: number | null;
+    };
 }
 
 export interface AmpAccountData {

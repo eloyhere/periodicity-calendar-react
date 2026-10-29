@@ -45,6 +45,13 @@ import type {
     ToastOptions,
     ToastResult,
 } from "../service/types";
+import type {
+    AppInfo,
+    AppInfoApi,
+    AppPreferences,
+    PreferencesApi,
+    SaveAppPreferences,
+} from "../settings/types";
 
 /**
  * Subscribes to one main-process channel.
@@ -136,6 +143,9 @@ const llm: LlmApi = {
     saveSettings(settings: LlmSaveSettings): Promise<LlmPublicSettings> {
         return ipcRenderer.invoke("llm:save-settings", settings) as Promise<LlmPublicSettings>;
     },
+    clearApiKey(): Promise<LlmPublicSettings> {
+        return ipcRenderer.invoke("llm:clear-api-key") as Promise<LlmPublicSettings>;
+    },
     chat(request: LlmChatRequest): Promise<LlmChatResult> {
         return ipcRenderer.invoke("llm:chat", request) as Promise<LlmChatResult>;
     },
@@ -158,6 +168,9 @@ const agent: AgentApi = {
     },
     workspace(): Promise<WorkspaceInfo> {
         return ipcRenderer.invoke("workspace:info") as Promise<WorkspaceInfo>;
+    },
+    pickDirectory(): Promise<string | null> {
+        return ipcRenderer.invoke("workspace:pick-directory") as Promise<string | null>;
     },
 };
 
@@ -277,3 +290,22 @@ const notification: SystemNotificationApi = {
 };
 
 contextBridge.exposeInMainWorld("notification", notification);
+
+const preferences: PreferencesApi = {
+    get(): Promise<AppPreferences> {
+        return ipcRenderer.invoke("preferences:get") as Promise<AppPreferences>;
+    },
+    save(input: SaveAppPreferences): Promise<AppPreferences> {
+        return ipcRenderer.invoke("preferences:save", input) as Promise<AppPreferences>;
+    },
+};
+
+contextBridge.exposeInMainWorld("preferences", preferences);
+
+const appInfo: AppInfoApi = {
+    get(): Promise<AppInfo> {
+        return ipcRenderer.invoke("app:info") as Promise<AppInfo>;
+    },
+};
+
+contextBridge.exposeInMainWorld("appInfo", appInfo);

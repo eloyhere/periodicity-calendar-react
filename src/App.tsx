@@ -3,6 +3,7 @@ import AppLayout from "./layout/AppLayout";
 import CallTestPage from "./pages/CallTestPage";
 import ChatPage from "./pages/ChatPage";
 import PlaceholderPage from "./pages/PlaceholderPage";
+import SettingsPage from "./pages/SettingsPage";
 import WorkflowPage from "./pages/WorkflowPage";
 import { appNavigationItems } from "./config/navigation";
 import "./App.css";
@@ -24,8 +25,10 @@ function App() {
                                     <WorkflowPage />
                                 ) : item.value === "/call-test" ? (
                                     <CallTestPage />
+                                ) : item.value === "/settings" ? (
+                                    <SettingsPage />
                                 ) : (
-                                    <PlaceholderPage title={item.label} />
+                                    <PlaceholderPage title={item.label} icon={item.icon} />
                                 )
                             }
                         />

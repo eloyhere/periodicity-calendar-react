@@ -73,6 +73,7 @@ export interface LlmChatResult {
 export interface LlmApi {
     getSettings: () => Promise<LlmPublicSettings>;
     saveSettings: (settings: LlmSaveSettings) => Promise<LlmPublicSettings>;
+    clearApiKey: () => Promise<LlmPublicSettings>;
     chat: (request: LlmChatRequest) => Promise<LlmChatResult>;
 }
 
@@ -130,6 +131,7 @@ export interface AgentApi {
     run: (request: AgentRunRequest) => Promise<AgentRunResult>;
     onEvent: (callback: (event: AgentEvent) => void) => () => void;
     workspace: () => Promise<WorkspaceInfo>;
+    pickDirectory: () => Promise<string | null>;
 }
 
 export interface ToolExecutionResult {

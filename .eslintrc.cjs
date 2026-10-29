@@ -10,7 +10,9 @@ module.exports = {
         "plugin:@typescript-eslint/recommended",
         "plugin:react-hooks/recommended",
     ],
-    ignorePatterns: ["dist", "dist-electron", "release", "eslint-rules", ".eslintrc.cjs"],
+    // `electron/protocol` is a verbatim third-party copy (see its PROVENANCE.md);
+    // `tools` holds Node scripts that run outside the app tsconfig projects.
+    ignorePatterns: ["dist", "dist-electron", "release", "eslint-rules", ".eslintrc.cjs", "electron/protocol", "tools"],
     parser: "@typescript-eslint/parser",
     parserOptions: {
         ecmaVersion: "latest",
